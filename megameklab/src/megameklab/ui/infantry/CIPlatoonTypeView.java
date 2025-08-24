@@ -48,7 +48,7 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import megamek.client.ui.util.DisplayTextfield;
+import megamek.client.ui.util.DisplayTextField;
 import megamek.common.EntityMovementMode;
 import megamek.common.ITechManager;
 import megamek.common.Infantry;
@@ -91,7 +91,7 @@ public class CIPlatoonTypeView extends BuildView implements ActionListener, Chan
     private final JLabel lblMaxSize = new JLabel();
     private final JLabel lblMaxSquadSize = new JLabel();
     private final JLabel lblBeastMountLabel = new StandardBuildLabel();
-    private final DisplayTextfield lblBeastMountType = new DisplayTextfield();
+    private final DisplayTextField lblBeastMountType = new DisplayTextField();
 
     private final ITechManager techManager;
 

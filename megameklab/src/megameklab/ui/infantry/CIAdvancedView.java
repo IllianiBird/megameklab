@@ -43,7 +43,7 @@ import javax.swing.JComponent;
 import javax.swing.JTextPane;
 
 import com.formdev.flatlaf.ui.FlatTextBorder;
-import megamek.client.ui.util.DisplayTextfield;
+import megamek.client.ui.util.DisplayTextField;
 import megamek.common.EquipmentType;
 import megamek.common.Infantry;
 import megamek.common.SimpleTechLevel;
@@ -59,7 +59,7 @@ public class CIAdvancedView extends IView {
 
     private static final String LIST_ITEM_SEPARATOR = ";";
 
-    private final DisplayTextfield txtArmor = new DisplayTextfield("None", WidthControlComponent.TEXTFIELD_COLUMNS);
+    private final DisplayTextField txtArmor = new DisplayTextField("None", WidthControlComponent.TEXTFIELD_COLUMNS);
     private final JTextPane txtSpecializations = new OptionsListTextPane(txtArmor);
     private final JTextPane txtAugmentations = new OptionsListTextPane(txtArmor);
 

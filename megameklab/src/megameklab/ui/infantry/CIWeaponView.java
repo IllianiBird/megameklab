@@ -49,7 +49,7 @@ import javax.swing.JComboBox;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-import megamek.client.ui.util.DisplayTextfield;
+import megamek.client.ui.util.DisplayTextField;
 import megamek.common.EntityMovementMode;
 import megamek.common.ITechManager;
 import megamek.common.Infantry;
@@ -82,9 +82,9 @@ public class CIWeaponView extends BuildView implements ActionListener {
     private final EnumSet<EntityMovementMode> FIELD_GUN_MODES = EnumSet.of(
           EntityMovementMode.TRACKED, EntityMovementMode.WHEELED, EntityMovementMode.INF_MOTORIZED);
 
-    private final DisplayTextfield txtPrimary = new DisplayTextfield(WidthControlComponent.TEXTFIELD_COLUMNS);
-    private final DisplayTextfield txtSecondary = new DisplayTextfield(WidthControlComponent.TEXTFIELD_COLUMNS);
-    private final DisplayTextfield txtGuns = new DisplayTextfield(WidthControlComponent.TEXTFIELD_COLUMNS);
+    private final DisplayTextField txtPrimary = new DisplayTextField(WidthControlComponent.TEXTFIELD_COLUMNS);
+    private final DisplayTextField txtSecondary = new DisplayTextField(WidthControlComponent.TEXTFIELD_COLUMNS);
+    private final DisplayTextField txtGuns = new DisplayTextField(WidthControlComponent.TEXTFIELD_COLUMNS);
     private final JComboBox<Integer> cbNumSecondary = new JComboBox<>();
     private final JComboBox<Integer> cbNumGuns = new JComboBox<>();
     private final JCheckBox chkAntiMek = new JCheckBox();

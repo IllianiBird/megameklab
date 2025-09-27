@@ -48,8 +48,17 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 
-import megamek.common.*;
 import megamek.common.equipment.ArmorType;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.Aero;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityWeightClass;
+import megamek.common.units.Jumpship;
+import megamek.common.units.Mek;
+import megamek.common.units.ProtoMek;
+import megamek.common.units.SuperHeavyTank;
+import megamek.common.units.Tank;
+import megamek.common.units.VTOL;
 import megamek.common.verifier.TestEntity;
 import megamek.common.verifier.TestSupportVehicle;
 import megameklab.ui.generalUnit.ArmorLocationView.ArmorLocationListener;
@@ -76,13 +85,13 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
 
     private static final int[][] MEK_LAYOUT = {
           { -1, -1, Mek.LOC_HEAD, -1, -1 },
-          { Mek.LOC_LARM, Mek.LOC_LT, Mek.LOC_CT, Mek.LOC_RT, Mek.LOC_RARM },
-          { -1, Mek.LOC_LLEG, Mek.LOC_CLEG, Mek.LOC_RLEG, -1 }
+          { Mek.LOC_LEFT_ARM, Mek.LOC_LEFT_TORSO, Mek.LOC_CENTER_TORSO, Mek.LOC_RIGHT_TORSO, Mek.LOC_RIGHT_ARM },
+          { -1, Mek.LOC_LEFT_LEG, Mek.LOC_CENTER_LEG, Mek.LOC_RIGHT_LEG, -1 }
     };
 
     private static final int[][] PROTOMEK_LAYOUT = {
-          { ProtoMek.LOC_MAINGUN, ProtoMek.LOC_HEAD, -1 },
-          { ProtoMek.LOC_LARM, ProtoMek.LOC_TORSO, ProtoMek.LOC_RARM },
+          { ProtoMek.LOC_MAIN_GUN, ProtoMek.LOC_HEAD, -1 },
+          { ProtoMek.LOC_LEFT_ARM, ProtoMek.LOC_TORSO, ProtoMek.LOC_RIGHT_ARM },
           { -1, ProtoMek.LOC_LEG, -1 }
     };
 
@@ -95,8 +104,8 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
 
     private static final int[][] SH_TANK_LAYOUT = {
           { -1, SuperHeavyTank.LOC_FRONT, -1 },
-          { SuperHeavyTank.LOC_FRONTLEFT, SuperHeavyTank.LOC_TURRET, SuperHeavyTank.LOC_FRONTRIGHT },
-          { SuperHeavyTank.LOC_REARLEFT, SuperHeavyTank.LOC_TURRET_2, SuperHeavyTank.LOC_REARRIGHT },
+          { SuperHeavyTank.LOC_FRONT_LEFT, SuperHeavyTank.LOC_TURRET, SuperHeavyTank.LOC_FRONT_RIGHT },
+          { SuperHeavyTank.LOC_REAR_LEFT, SuperHeavyTank.LOC_TURRET_2, SuperHeavyTank.LOC_REAR_RIGHT },
           { -1, SuperHeavyTank.LOC_REAR, -1 }
     };
 
@@ -109,7 +118,7 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
 
     private static final int[][] AERODYNE_LAYOUT = {
           { -1, Aero.LOC_NOSE, -1 },
-          { Aero.LOC_LWING, -1, Aero.LOC_RWING },
+          { Aero.LOC_LEFT_WING, -1, Aero.LOC_RIGHT_WING },
           { -1, Aero.LOC_AFT, -1 }
     };
 
@@ -132,12 +141,12 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
     private final JLabel lblPointsPerTon = new JLabel("", SwingConstants.RIGHT);
 
     private final ResourceBundle resourceMap = ResourceBundle.getBundle("megameklab.resources.Views");
-    private long entitytype;
+    private long entityType;
     private boolean showPatchwork = false;
     private String tooltipFormat;
 
-    public ArmorAllocationView(ITechManager techManager, long entitytype) {
-        this.entitytype = entitytype;
+    public ArmorAllocationView(ITechManager techManager, long entityType) {
+        this.entityType = entityType;
         initUI();
     }
 
@@ -289,23 +298,7 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
     }
 
     private void updateLayout() {
-        int[][] layout;
-        if ((entitytype & Entity.ETYPE_MEK) != 0) {
-            layout = MEK_LAYOUT;
-        } else if ((entitytype & Entity.ETYPE_PROTOMEK) != 0) {
-            layout = PROTOMEK_LAYOUT;
-        } else if ((entitytype & Entity.ETYPE_JUMPSHIP) != 0) {
-            layout = CAPITAL_LAYOUT;
-        } else if ((entitytype & Entity.ETYPE_AERO) != 0) {
-            // Spheroids use lwing/rwing rear for l/r aft positions
-            layout = AERODYNE_LAYOUT;
-        } else if ((entitytype & Entity.ETYPE_VTOL) != 0) {
-            layout = VTOL_LAYOUT;
-        } else if ((entitytype & (Entity.ETYPE_SUPER_HEAVY_TANK | Entity.ETYPE_LARGE_SUPPORT_TANK)) != 0) {
-            layout = SH_TANK_LAYOUT;
-        } else {
-            layout = TANK_LAYOUT;
-        }
+        int[][] layout = getLayoutFromEntity();
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
@@ -313,11 +306,10 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
         gbc.fill = GridBagConstraints.NONE;
         gbc.gridwidth = GridBagConstraints.REMAINDER;
         locationViews.clear();
-        for (int row = 0; row < layout.length; row++) {
+        for (int[] ints : layout) {
             JPanel panRow = new JPanel();
             panRow.setLayout(new BoxLayout(panRow, BoxLayout.X_AXIS));
-            for (int col = 0; col < layout[row].length; col++) {
-                final int loc = layout[row][col];
+            for (final int loc : ints) {
                 if (loc >= 0) {
                     ArmorLocationView locView = new ArmorLocationView(loc);
                     locationViews.add(locView);
@@ -332,9 +324,30 @@ public class ArmorAllocationView extends BuildView implements ArmorLocationListe
         }
     }
 
+    private int[][] getLayoutFromEntity() {
+        int[][] layout;
+        if ((entityType & Entity.ETYPE_MEK) != 0) {
+            layout = MEK_LAYOUT;
+        } else if ((entityType & Entity.ETYPE_PROTOMEK) != 0) {
+            layout = PROTOMEK_LAYOUT;
+        } else if ((entityType & Entity.ETYPE_JUMPSHIP) != 0) {
+            layout = CAPITAL_LAYOUT;
+        } else if ((entityType & Entity.ETYPE_AERO) != 0) {
+            // Spheroids use left wing/right wing rear for l/r aft positions
+            layout = AERODYNE_LAYOUT;
+        } else if ((entityType & Entity.ETYPE_VTOL) != 0) {
+            layout = VTOL_LAYOUT;
+        } else if ((entityType & (Entity.ETYPE_SUPER_HEAVY_TANK | Entity.ETYPE_LARGE_SUPPORT_TANK)) != 0) {
+            layout = SH_TANK_LAYOUT;
+        } else {
+            layout = TANK_LAYOUT;
+        }
+        return layout;
+    }
+
     public void setEntityType(long etype) {
-        if (etype != entitytype) {
-            entitytype = etype;
+        if (etype != entityType) {
+            entityType = etype;
             panLocations.removeAll();
             updateLayout();
             panLocations.repaint();

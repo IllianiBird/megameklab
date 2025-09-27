@@ -37,7 +37,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -45,9 +44,27 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import megamek.codeUtilities.MathUtility;
-import megamek.common.*;
+import megamek.common.SimpleTechLevel;
+import megamek.common.TechConstants;
+import megamek.common.bays.Bay;
+import megamek.common.enums.Faction;
 import megamek.common.equipment.ArmorType;
+import megamek.common.equipment.Engine;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.Transporter;
+import megamek.common.exceptions.LocationFullException;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.InfantryCompartment;
+import megamek.common.units.SuperHeavyTank;
+import megamek.common.units.Tank;
+import megamek.common.units.UnitRole;
+import megamek.common.units.VTOL;
 import megamek.common.verifier.BayData;
+import megamek.common.verifier.Ceil;
 import megamek.common.verifier.TestEntity;
 import megamek.common.verifier.TestTank;
 import megamek.logging.MMLogger;
@@ -66,7 +83,7 @@ import megameklab.ui.util.RefreshListener;
 import megameklab.util.UnitUtil;
 
 public class CVStructureTab extends ITab implements CVBuildListener, ArmorAllocationListener {
-    private static final MMLogger logger = MMLogger.create(CVStructureTab.class);
+    private static final MMLogger LOGGER = MMLogger.create(CVStructureTab.class);
 
     private RefreshListener refresh = null;
     private JPanel masterPanel;
@@ -200,7 +217,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
     /*
      * Used by MekHQ to set the tech faction for custom refits.
      */
-    public void setTechFaction(ITechnology.Faction techFaction) {
+    public void setTechFaction(Faction techFaction) {
         panBasicInfo.setTechFaction(techFaction);
     }
 
@@ -229,7 +246,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
     }
 
     private void removeTurret(int loc) {
-        for (int slot = 0; slot < getTank().getNumberOfCriticals(loc); slot++) {
+        for (int slot = 0; slot < getTank().getNumberOfCriticalSlots(loc); slot++) {
             getTank().setCritical(loc, slot, null);
         }
         for (Mounted<?> mount : getTank().getEquipment()) {
@@ -347,16 +364,15 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         if (getTank().hasPatchworkArmor()) {
             for (int loc = 0; loc < getTank().locations(); loc++) {
                 if (!getTechManager().isLegal(panPatchwork.getArmor(loc))) {
-                    getTank().setArmorType(EquipmentType.T_ARMOR_STANDARD, TechConstants.T_INTRO_BOXSET);
+                    getTank().setArmorType(EquipmentType.T_ARMOR_STANDARD, TechConstants.T_INTRO_BOX_SET);
                     UnitUtil.resetArmor(getTank(), loc);
                 }
             }
         } else if (!getTechManager().isLegal(panArmor.getArmor())) {
             UnitUtil.removeISorArmorMounts(getTank(), false);
         }
-        // If we have a large engine, a drop in tech level may make it unavailable and
-        // we will need
-        // to reduce speed to a legal value.
+        // If we have a large engine, a drop in tech level may make it unavailable, and we will need to reduce speed
+        // to a legal value.
         if (getTank().getEngine().hasFlag(Engine.LARGE_ENGINE)
               && panChassis.getAvailableEngines().isEmpty()) {
             int walk;
@@ -422,13 +438,13 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
     @Override
     public void jumpChanged(int jumpMP, EquipmentType jumpJet) {
         if (null != jumpJet) {
-            UnitUtil.removeAllMiscMounteds(getTank(), MiscType.F_JUMP_JET);
+            UnitUtil.removeAllMiscMounted(getTank(), MiscType.F_JUMP_JET);
             getTank().setOriginalJumpMP(0);
             for (int i = 0; i < jumpMP; i++) {
                 try {
                     getTank().addEquipment(jumpJet, Tank.LOC_BODY);
                 } catch (LocationFullException e) {
-                    logger.error("", e);
+                    LOGGER.error("", e);
                 }
             }
             panSummary.refresh();
@@ -451,7 +467,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
     public void armorTypeChanged(int at, int aTechLevel) {
         if (at != EquipmentType.T_ARMOR_PATCHWORK) {
             UnitUtil.removeISorArmorMounts(getTank(), false);
-            UnitUtil.compactCriticals(getTank());
+            UnitUtil.compactCriticalSlots(getTank());
             getTank().setArmorTechLevel(aTechLevel);
             getTank().setArmorType(at);
             panArmorAllocation.showPatchwork(false);
@@ -502,7 +518,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         currentTonnage += UnitUtil.getUnallocatedAmmoTonnage(getTank());
         double totalTonnage = getTank().getWeight();
         double remainingTonnage = TestEntity.floor(
-              totalTonnage - currentTonnage, TestEntity.Ceil.HALFTON);
+              totalTonnage - currentTonnage, Ceil.HALF_TON);
 
         double maxArmor = MathUtility.clamp(getTank().getArmorWeight() + remainingTonnage, 0,
               UnitUtil.getMaximumArmorTonnage(getTank()));
@@ -710,7 +726,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
     @Override
     public void troopSpaceChanged(double fixed, double pod) {
         List<Transporter> toRemove = getTank().getTransports().stream()
-              .filter(t -> t instanceof InfantryCompartment).collect(Collectors.toList());
+              .filter(t -> t instanceof InfantryCompartment).toList();
         toRemove.forEach(t -> getTank().removeTransporter(t));
         double troopTons = Math
               .round((fixed) * 2) / 2.0;
@@ -731,7 +747,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         List<Transporter> toRemove = getTank().getTransports().stream()
               .filter(t -> (t instanceof Bay)
                     && (bayType == BayData.getBayType((Bay) t)))
-              .collect(Collectors.toList());
+              .toList();
         toRemove.forEach(t -> getTank().removeTransporter(t));
         double bayTons = Math
               .round((fixed) * 2) / 2.0;
@@ -837,7 +853,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         UnitUtil.resetArmor(getTank(), location);
 
         int crits = armor.getPatchworkSlotsCVFtr();
-        if (getTank().getEmptyCriticals(location) < crits) {
+        if (getTank().getEmptyCriticalSlots(location) < crits) {
             JOptionPane.showMessageDialog(
                   null, armor.getName()
                         + " does not fit in location "
@@ -846,7 +862,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
                   "Error",
                   JOptionPane.INFORMATION_MESSAGE);
             getEntity().setArmorType(EquipmentType.T_ARMOR_STANDARD, location);
-            getEntity().setArmorTechLevel(TechConstants.T_INTRO_BOXSET);
+            getEntity().setArmorTechLevel(TechConstants.T_INTRO_BOX_SET);
         } else {
             getTank().setArmorType(armor.getArmorType(), location);
             getTank().setArmorTechLevel(armor.getTechLevel(getTechManager().getGameYear(), armor.isClan()));

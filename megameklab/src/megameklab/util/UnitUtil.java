@@ -49,37 +49,46 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 import megamek.client.Client;
-import megamek.common.*;
+import megamek.codeUtilities.StringUtility;
+import megamek.common.CriticalSlot;
+import megamek.common.Player;
+import megamek.common.SimpleTechLevel;
+import megamek.common.TechConstants;
 import megamek.common.annotations.Nullable;
-import megamek.common.equipment.AmmoMounted;
-import megamek.common.equipment.ArmorType;
-import megamek.common.equipment.MiscMounted;
-import megamek.common.equipment.WeaponMounted;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.enums.TechBase;
+import megamek.common.equipment.*;
+import megamek.common.equipment.enums.MiscTypeFlag;
+import megamek.common.exceptions.LocationFullException;
+import megamek.common.game.Game;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.interfaces.ITechnology;
 import megamek.common.loaders.BLKFile;
+import megamek.common.loaders.MekFileParser;
 import megamek.common.options.OptionsConstants;
+import megamek.common.units.*;
 import megamek.common.util.BuildingBlock;
 import megamek.common.verifier.*;
-import megamek.common.verifier.TestEntity.Ceil;
 import megamek.common.weapons.AmmoWeapon;
-import megamek.common.weapons.autocannons.HVACWeapon;
-import megamek.common.weapons.autocannons.RACWeapon;
-import megamek.common.weapons.autocannons.UACWeapon;
-import megamek.common.weapons.bayweapons.BayWeapon;
-import megamek.common.weapons.defensivepods.BPodWeapon;
-import megamek.common.weapons.defensivepods.MPodWeapon;
+import megamek.common.weapons.autoCannons.HVACWeapon;
+import megamek.common.weapons.autoCannons.RACWeapon;
+import megamek.common.weapons.autoCannons.UACWeapon;
+import megamek.common.weapons.bayWeapons.BayWeapon;
+import megamek.common.weapons.defensivePods.BPodWeapon;
+import megamek.common.weapons.defensivePods.MPodWeapon;
 import megamek.common.weapons.flamers.VehicleFlamerWeapon;
-import megamek.common.weapons.gaussrifles.GaussWeapon;
+import megamek.common.weapons.gaussRifles.GaussWeapon;
 import megamek.common.weapons.infantry.InfantryWeapon;
-import megamek.common.weapons.lasers.CLChemicalLaserWeapon;
+import megamek.common.weapons.lasers.clan.CLChemicalLaserWeapon;
 import megamek.common.weapons.lrms.LRMWeapon;
 import megamek.common.weapons.lrms.LRTWeapon;
 import megamek.common.weapons.lrms.StreakLRMWeapon;
 import megamek.common.weapons.mgs.MGWeapon;
 import megamek.common.weapons.missiles.MRMWeapon;
-import megamek.common.weapons.missiles.RLWeapon;
-import megamek.common.weapons.missiles.ThunderBoltWeapon;
-import megamek.common.weapons.ppc.CLPlasmaCannon;
-import megamek.common.weapons.ppc.ISPlasmaRifle;
+import megamek.common.weapons.missiles.rocketLauncher.RLWeapon;
+import megamek.common.weapons.missiles.thuunderbolt.ThunderboltWeapon;
+import megamek.common.weapons.ppc.clan.CLPlasmaCannon;
+import megamek.common.weapons.ppc.innerSphere.ISPlasmaRifle;
 import megamek.common.weapons.srms.SRMWeapon;
 import megamek.common.weapons.srms.SRTWeapon;
 import megamek.common.weapons.srms.StreakSRMWeapon;
@@ -87,8 +96,7 @@ import megamek.logging.MMLogger;
 import megameklab.ui.PopupMessages;
 
 public class UnitUtil {
-
-    private static final MMLogger logger = MMLogger.create(UnitUtil.class);
+    private static final MMLogger LOGGER = MMLogger.create(UnitUtil.class);
 
     private static Font rsFont = null;
     private static Font rsBoldFont = null;
@@ -130,8 +138,8 @@ public class UnitUtil {
               (eq.hasFlag(MiscType.F_JUMP_BOOSTER) ||
                     eq.hasFlag(MiscType.F_BA_MANIPULATOR) ||
                     eq.hasFlag(MiscType.F_PARTIAL_WING) ||
-                    eq.hasFlag(MiscType.F_NULLSIG) ||
-                    eq.hasFlag(MiscType.F_VOIDSIG) ||
+                    eq.hasFlag(MiscType.F_NULL_SIG) ||
+                    eq.hasFlag(MiscType.F_VOID_SIG) ||
                     eq.hasFlag(MiscType.F_ENVIRONMENTAL_SEALING) ||
                     eq.hasFlag(MiscType.F_TRACKS) ||
                     eq.hasFlag(MiscType.F_TALON) ||
@@ -220,7 +228,7 @@ public class UnitUtil {
      * @return The number of slots per allocation
      */
     public static int getCritsUsed(Mounted<?> mount) {
-        double toReturn = mount.getCriticals();
+        double toReturn = mount.getNumCriticalSlots();
 
         // if it's 0, we can return now (e.g. standard armor or IS, we don't
         // want that to count as 1 later on
@@ -257,7 +265,7 @@ public class UnitUtil {
      * @param mount The equipment
      */
     public static void removeMounted(Entity unit, Mounted<?> mount) {
-        UnitUtil.removeCriticals(unit, mount);
+        UnitUtil.removeCriticalSlots(unit, mount);
 
         // Some special checks for BA
         if (unit instanceof BattleArmor) {
@@ -323,13 +331,13 @@ public class UnitUtil {
             unit.getTotalWeaponList().remove(mount);
         }
 
-        if (bayWeapons.containsKey(mount)) {
+        if (mount instanceof WeaponMounted && bayWeapons.containsKey(mount)) {
             bayWeapons.get(mount).forEach(w -> {
-                removeCriticals(unit, w);
+                removeCriticalSlots(unit, w);
                 changeMountStatus(unit, w, Entity.LOC_NONE, Entity.LOC_NONE, false);
             });
             bayAmmo.get(mount).forEach(a -> {
-                removeCriticals(unit, a);
+                removeCriticalSlots(unit, a);
                 Mounted<?> moveTo = UnitUtil.findUnallocatedAmmo(unit, a.getType());
 
                 if (null != moveTo) {
@@ -412,27 +420,27 @@ public class UnitUtil {
     }
 
     /**
-     * Removes all criticals of the given unit.
+     * Removes all criticalSlots of the given unit.
      */
-    synchronized public static void removeAllCriticals(Entity unit) {
-        removeAllCriticalsFrom(unit, IntStream.range(0, unit.locations()).boxed().toList());
+    synchronized public static void removeAllCriticalSlots(Entity unit) {
+        removeAllCriticalSlotsFrom(unit, IntStream.range(0, unit.locations()).boxed().toList());
 
-        // cleanup of remnants if any (should not be needed but we never know)
+        // cleanup of remnants if any (should not be needed, but we never know)
         unit.getEquipment()
               .stream()
               .filter(m -> (m != null) &&
                     (m.getLocation() != Entity.LOC_NONE) &&
                     (!UnitUtil.isFixedLocationSpreadEquipment(m.getType())))
               .forEach(m -> {
-                  UnitUtil.removeCriticals(unit, m);
+                  UnitUtil.removeCriticalSlots(unit, m);
                   UnitUtil.changeMountStatus(unit, m, Entity.LOC_NONE, Entity.LOC_NONE, false);
               });
     }
 
     /**
-     * Removes all criticals from the given locations for the given unit.
+     * Removes all criticalSlots from the given locations for the given unit.
      */
-    synchronized public static void removeAllCriticalsFrom(Entity unit, List<Integer> locations) {
+    synchronized public static void removeAllCriticalSlotsFrom(Entity unit, List<Integer> locations) {
         // Special handling for BattleArmor
         if (unit instanceof BattleArmor ba) {
             ba.getEquipment()
@@ -445,35 +453,35 @@ public class UnitUtil {
                   });
             return;
         }
-        // first we remove all criticals
+        // first we remove all criticalSlots
         for (int loc = 0; loc < unit.locations(); loc++) {
             if (!locations.contains(loc)) {
                 continue;
             }
-            for (int i = 0; i < unit.getNumberOfCriticals(loc); i++) {
+            for (int i = 0; i < unit.getNumberOfCriticalSlots(loc); i++) {
                 CriticalSlot cs = unit.getCritical(loc, i);
                 if ((cs != null) && (cs.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
                     Mounted<?> m1 = cs.getMount();
                     Mounted<?> m2 = cs.getMount2();
                     if ((m2 != null) && (!UnitUtil.isFixedLocationSpreadEquipment(m2.getType()))) {
-                        UnitUtil.removeCriticals(unit, m2);
+                        UnitUtil.removeCriticalSlots(unit, m2);
                         UnitUtil.changeMountStatus(unit, m2, Entity.LOC_NONE, Entity.LOC_NONE, false);
                     }
                     if ((m1 != null) && (!UnitUtil.isFixedLocationSpreadEquipment(m1.getType()))) {
-                        UnitUtil.removeCriticals(unit, m1);
+                        UnitUtil.removeCriticalSlots(unit, m1);
                         UnitUtil.changeMountStatus(unit, m1, Entity.LOC_NONE, Entity.LOC_NONE, false);
                     }
                 }
             }
         }
-        // cleanup of remnants if any (should not be needed but we never know)
+        // cleanup of remnants if any (should not be needed, but we never know)
         unit.getEquipment()
               .stream()
               .filter(m -> (m != null) && locations.contains(m.getLocation()))
               .filter(m -> (m.getLocation() != Entity.LOC_NONE) &&
                     (!UnitUtil.isFixedLocationSpreadEquipment(m.getType())))
               .forEach(m -> {
-                  UnitUtil.removeCriticals(unit, m);
+                  UnitUtil.removeCriticalSlots(unit, m);
                   UnitUtil.changeMountStatus(unit, m, Entity.LOC_NONE, Entity.LOC_NONE, false);
               });
     }
@@ -484,28 +492,27 @@ public class UnitUtil {
      * @param unit The entity
      * @param eq   The equipment to test
      */
-    public static void removeCriticals(Entity unit, Mounted<?> eq) {
+    public static void removeCriticalSlots(Entity unit, Mounted<?> eq) {
         if (eq.getLocation() == Entity.LOC_NONE) {
             return;
         }
 
         for (int loc = 0; loc < unit.locations(); loc++) {
-            for (int slot = 0; slot < unit.getNumberOfCriticals(loc); slot++) {
-                CriticalSlot cs = unit.getCritical(loc, slot);
-                if ((cs != null) && (cs.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
-                    if ((cs.getMount() != null) && (cs.getMount().equals(eq))) {
-                        // If there are two pieces of equipment in this slot, remove first one, and replace it with the
-                        // second
-                        if (cs.getMount2() != null) {
-                            cs.setMount(cs.getMount2());
-                            cs.setMount2(null);
+            for (int slot = 0; slot < unit.getNumberOfCriticalSlots(loc); slot++) {
+                CriticalSlot criticalSlot = unit.getCritical(loc, slot);
+                if ((criticalSlot != null) && (criticalSlot.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
+                    if ((criticalSlot.getMount() != null) && (criticalSlot.getMount().equals(eq))) {
+                        // If there are two pieces of equipment in this slot, remove first one, and replace it with
+                        // the second
+                        if (criticalSlot.getMount2() != null) {
+                            criticalSlot.setMount(criticalSlot.getMount2());
+                            criticalSlot.setMount2(null);
                         } else {
                             // If it's the only Mounted, clear the slot
-                            cs = null;
-                            unit.setCritical(loc, slot, cs);
+                            unit.setCritical(loc, slot, null);
                         }
-                    } else if ((cs.getMount2() != null) && (cs.getMount2().equals(eq))) {
-                        cs.setMount2(null);
+                    } else if ((criticalSlot.getMount2() != null) && (criticalSlot.getMount2().equals(eq))) {
+                        criticalSlot.setMount2(null);
                     }
                 }
             }
@@ -519,27 +526,26 @@ public class UnitUtil {
      * @param eq   The equipment to test
      * @param loc  The location to remove critical slots from.
      */
-    public static void removeCriticals(Entity unit, Mounted<?> eq, int loc) {
+    public static void removeCriticalSlots(Entity unit, Mounted<?> eq, int loc) {
         if (eq.getLocation() == Entity.LOC_NONE) {
             return;
         }
 
-        for (int slot = 0; slot < unit.getNumberOfCriticals(loc); slot++) {
-            CriticalSlot cs = unit.getCritical(loc, slot);
-            if ((cs != null) && (cs.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
-                if ((cs.getMount() != null) && (cs.getMount().equals(eq))) {
+        for (int slot = 0; slot < unit.getNumberOfCriticalSlots(loc); slot++) {
+            CriticalSlot criticalSlot = unit.getCritical(loc, slot);
+            if ((criticalSlot != null) && (criticalSlot.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
+                if ((criticalSlot.getMount() != null) && (criticalSlot.getMount().equals(eq))) {
                     // If there are two pieces of equipment in this slot,
                     // remove first one, and replace it with the second
-                    if (cs.getMount2() != null) {
-                        cs.setMount(cs.getMount2());
-                        cs.setMount2(null);
+                    if (criticalSlot.getMount2() != null) {
+                        criticalSlot.setMount(criticalSlot.getMount2());
+                        criticalSlot.setMount2(null);
                     } else {
                         // If it's the only Mounted, clear the slot
-                        cs = null;
-                        unit.setCritical(loc, slot, cs);
+                        unit.setCritical(loc, slot, null);
                     }
-                } else if ((cs.getMount2() != null) && (cs.getMount2().equals(eq))) {
-                    cs.setMount2(null);
+                } else if ((criticalSlot.getMount2() != null) && (criticalSlot.getMount2().equals(eq))) {
+                    criticalSlot.setMount2(null);
                 }
             }
         }
@@ -591,7 +597,7 @@ public class UnitUtil {
                 return false;
             }
         } else {
-            if (tech.getTechBase() != ITechnology.TechBase.ALL && unit.isClan() != tech.isClan()) {
+            if (tech.getTechBase() != TechBase.ALL && unit.isClan() != tech.isClan()) {
                 return false;
             }
 
@@ -624,11 +630,11 @@ public class UnitUtil {
     }
 
     public static boolean isHeatSink(EquipmentType eq, boolean ignorePrototype) {
-        return (eq instanceof megamek.common.MiscType) &&
-              (eq.hasFlag(megamek.common.MiscType.F_HEAT_SINK) ||
-                    eq.hasFlag(megamek.common.MiscType.F_LASER_HEAT_SINK) ||
-                    eq.hasFlag(megamek.common.MiscType.F_DOUBLE_HEAT_SINK) ||
-                    (eq.hasFlag(megamek.common.MiscType.F_IS_DOUBLE_HEAT_SINK_PROTOTYPE) && !ignorePrototype));
+        return (eq instanceof MiscType) &&
+              (eq.hasFlag(MiscType.F_HEAT_SINK) ||
+                    eq.hasFlag(MiscType.F_LASER_HEAT_SINK) ||
+                    eq.hasFlag(MiscType.F_DOUBLE_HEAT_SINK) ||
+                    (eq.hasFlag(MiscType.F_IS_DOUBLE_HEAT_SINK_PROTOTYPE) && !ignorePrototype));
     }
 
     /**
@@ -772,7 +778,7 @@ public class UnitUtil {
             final int loc = mount.getLocation();
             int start = -1;
 
-            for (int slot = 0; slot < entity.getNumberOfCriticals(loc); slot++) {
+            for (int slot = 0; slot < entity.getNumberOfCriticalSlots(loc); slot++) {
                 CriticalSlot criticalSlot = entity.getCritical(loc, slot);
                 if ((criticalSlot != null) &&
                       (criticalSlot.getType() == CriticalSlot.TYPE_EQUIPMENT) &&
@@ -782,16 +788,16 @@ public class UnitUtil {
                 }
             }
 
-            removeCriticals(entity, mount);
-            compactCriticals(entity, loc);
-            if ((start < 0) || (entity.getEmptyCriticals(loc) < mount.getCriticals())) {
+            removeCriticalSlots(entity, mount);
+            compactCriticalSlots(entity, loc);
+            if ((start < 0) || (entity.getEmptyCriticalSlots(loc) < mount.getNumCriticalSlots())) {
                 changeMountStatus(entity, mount, Entity.LOC_NONE, Entity.LOC_NONE, false);
             } else {
                 // If the number of critical slots increases, we may need to shift existing critical slots to make
                 // room. Since we checked for sufficient space and compacted the existing critical slots we can be
                 // assured of not overrunning the array.
                 List<CriticalSlot> toAdd = new ArrayList<>();
-                for (int i = 0; i < mount.getCriticals(); i++) {
+                for (int i = 0; i < mount.getNumCriticalSlots(); i++) {
                     toAdd.add(new CriticalSlot(mount));
                 }
                 int slot = start;
@@ -821,7 +827,7 @@ public class UnitUtil {
         for (Mounted<?> m : unit.getAmmo()) {
             if ((m.getLocation() == Entity.LOC_NONE) &&
                   at.equals(m.getType()) &&
-                  ((m.getLinkedBy() == null) || !m.getLinkedBy().getType().hasFlag(WeaponType.F_ONESHOT))) {
+                  ((m.getLinkedBy() == null) || !m.getLinkedBy().getType().hasFlag(WeaponType.F_ONE_SHOT))) {
                 return m;
             }
         }
@@ -890,7 +896,7 @@ public class UnitUtil {
 
     public static boolean hasTargComp(Entity unit) {
         for (Mounted<?> mount : unit.getEquipment()) {
-            if ((mount.getType() instanceof MiscType) && mount.getType().hasFlag(MiscType.F_TARGCOMP)) {
+            if ((mount.getType() instanceof MiscType) && mount.getType().hasFlag(MiscType.F_TARGETING_COMPUTER)) {
                 return true;
             }
         }
@@ -901,7 +907,7 @@ public class UnitUtil {
     public static int[] getHighestContinuousNumberOfCritsArray(Mek unit) {
         int[] criticalSpaces = new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
 
-        for (int loc = 0; loc <= Mek.LOC_LLEG; loc++) {
+        for (int loc = 0; loc <= Mek.LOC_LEFT_LEG; loc++) {
             criticalSpaces[loc] = UnitUtil.getHighestContinuousNumberOfCrits(unit, loc);
         }
 
@@ -917,7 +923,7 @@ public class UnitUtil {
             return 0;
         }
 
-        for (int slot = 0; slot < unit.getNumberOfCriticals(location); slot++) {
+        for (int slot = 0; slot < unit.getNumberOfCriticalSlots(location); slot++) {
             if (unit.getCritical(location, slot) == null) {
                 currentCriticalSlotCount++;
             } else {
@@ -1029,7 +1035,7 @@ public class UnitUtil {
             if (unit.getWeightClass() == EntityWeightClass.WEIGHT_SMALL_SUPPORT) {
                 return TestEntity.round(weight, Ceil.KILO);
             } else {
-                return TestEntity.ceil(weight, Ceil.HALFTON);
+                return TestEntity.ceil(weight, Ceil.HALF_TON);
             }
         } else if (unit instanceof Tank) {
             double points = Math.floor((unit.getWeight() * 3.5) + 40);
@@ -1064,12 +1070,12 @@ public class UnitUtil {
         }
     }
 
-    public static void compactCriticals(Entity unit) {
+    public static void compactCriticalSlots(Entity unit) {
         for (int loc = 0; loc < unit.locations(); loc++) {
             if (unit instanceof Mek) {
-                MekUtil.compactCriticals((Mek) unit, loc);
+                MekUtil.compactCriticalSlots((Mek) unit, loc);
             } else {
-                compactCriticals(unit, loc);
+                compactCriticalSlots(unit, loc);
             }
         }
     }
@@ -1097,9 +1103,9 @@ public class UnitUtil {
         return null;
     }
 
-    public static void compactCriticals(Entity unit, int loc) {
+    public static void compactCriticalSlots(Entity unit, int loc) {
         int firstEmpty = -1;
-        for (int slot = 0; slot < unit.getNumberOfCriticals(loc); slot++) {
+        for (int slot = 0; slot < unit.getNumberOfCriticalSlots(loc); slot++) {
             CriticalSlot cs = unit.getCritical(loc, slot);
 
             if ((cs == null) && (firstEmpty == -1)) {
@@ -1130,7 +1136,7 @@ public class UnitUtil {
               !(weapon instanceof UACWeapon) &&
               !(weapon instanceof HVACWeapon) &&
               !(weapon instanceof MGWeapon) &&
-              !(weapon instanceof ThunderBoltWeapon) &&
+              !(weapon instanceof ThunderboltWeapon) &&
               !(weapon instanceof CLChemicalLaserWeapon) &&
               !(weapon instanceof MPodWeapon) &&
               !(weapon instanceof BPodWeapon) &&
@@ -1181,7 +1187,10 @@ public class UnitUtil {
 
         for (Mounted<?> mount : ammoList) {
             unit.getEquipment().remove(mount);
-            unit.getAmmo().remove(mount);
+
+            if (mount instanceof AmmoMounted) {
+                unit.getAmmo().remove(mount);
+            }
         }
     }
 
@@ -1202,10 +1211,10 @@ public class UnitUtil {
      * @param eq The equipment to test
      */
     public static boolean isJumpJet(EquipmentType eq) {
-        return (eq instanceof megamek.common.MiscType) &&
-              (eq.hasFlag(megamek.common.MiscType.F_JUMP_JET) ||
-                    eq.hasFlag(megamek.common.MiscType.F_UMU) ||
-                    eq.hasFlag(megamek.common.MiscType.F_BA_VTOL));
+        return (eq instanceof MiscType) &&
+              (eq.hasFlag(MiscType.F_JUMP_JET) ||
+                    eq.hasFlag(MiscType.F_UMU) ||
+                    eq.hasFlag(MiscType.F_BA_VTOL));
     }
 
     /**
@@ -1231,10 +1240,10 @@ public class UnitUtil {
     }
 
     /**
-     * Return the number of critical-space free heatsinks that the given entity can have.
+     * Return the number of critical-space free heat sinks that the given entity can have.
      *
-     * @param unit    The entity The unit mounting the heatsinks
-     * @param compact Whether the heatsinks are compact or not
+     * @param unit    The entity The unit mounting the heat sinks
+     * @param compact Whether the heat sinks are compact or not
      *
      * @return The number of critical-free heat sinks.
      */
@@ -1258,13 +1267,13 @@ public class UnitUtil {
     /**
      * Returns the total heat generation of the entity
      *
-     * @param countOneshots If false, one-shot weapons are excluded.
+     * @param countOneShots If false, one-shot weapons are excluded.
      */
-    public static int getTotalHeatGeneration(Entity entity, boolean countOneshots) {
+    public static int getTotalHeatGeneration(Entity entity, boolean countOneShots) {
         return entity.getEquipment().stream().mapToInt(m -> {
             var heat = m.getType().getHeat();
             if (m instanceof WeaponMounted wm) {
-                if (!countOneshots && wm.getType().hasFlag(WeaponType.F_ONESHOT)) {
+                if (!countOneShots && wm.getType().hasFlag(WeaponType.F_ONE_SHOT)) {
                     return 0;
                 }
 
@@ -1326,7 +1335,7 @@ public class UnitUtil {
      * @param location The location to check
      */
     public static void updateCritsArmoredStatus(Entity unit, Mounted<?> mount, int location) {
-        for (int position = 0; position < unit.getNumberOfCriticals(location); position++) {
+        for (int position = 0; position < unit.getNumberOfCriticalSlots(location); position++) {
             CriticalSlot cs = unit.getCritical(location, position);
             if ((cs == null) || (cs.getType() == CriticalSlot.TYPE_SYSTEM)) {
                 continue;
@@ -1373,8 +1382,8 @@ public class UnitUtil {
         }
 
         if (cs.getIndex() <= Mek.SYSTEM_GYRO) {
-            for (int loc = Mek.LOC_HEAD; loc <= Mek.LOC_LT; loc++) {
-                for (int slot = 0; slot < unit.getNumberOfCriticals(loc); slot++) {
+            for (int loc = Mek.LOC_HEAD; loc <= Mek.LOC_LEFT_TORSO; loc++) {
+                for (int slot = 0; slot < unit.getNumberOfCriticalSlots(loc); slot++) {
                     CriticalSlot newCrit = unit.getCritical(loc, slot);
 
                     if ((newCrit != null) &&
@@ -1386,7 +1395,7 @@ public class UnitUtil {
             }
         } else {
             // actuators
-            for (int slot = 0; slot < unit.getNumberOfCriticals(location); slot++) {
+            for (int slot = 0; slot < unit.getNumberOfCriticalSlots(location); slot++) {
                 CriticalSlot newCriticalSlot = unit.getCritical(location, slot);
 
                 if ((newCriticalSlot != null) &&
@@ -1528,7 +1537,7 @@ public class UnitUtil {
         }
 
         for (int location = Mek.LOC_HEAD; location < unit.locations(); location++) {
-            for (int slot = 0; slot < unit.getNumberOfCriticals(location); slot++) {
+            for (int slot = 0; slot < unit.getNumberOfCriticalSlots(location); slot++) {
                 CriticalSlot criticalSlot = unit.getCritical(location, slot);
                 if ((criticalSlot != null) && (criticalSlot.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
                     Mounted<?> mount = criticalSlot.getMount();
@@ -1536,8 +1545,7 @@ public class UnitUtil {
                     if ((mount != null) &&
                           (mount.getType() instanceof MiscType) &&
                           mountList.contains(mount.getType().getInternalName())) {
-                        criticalSlot = null;
-                        unit.setCritical(location, slot, criticalSlot);
+                        unit.setCritical(location, slot, null);
                     }
                 }
             }
@@ -1606,20 +1614,25 @@ public class UnitUtil {
 
         EquipmentType eq = EquipmentType.get(name);
         if (null != eq) {
-            for (int slot = 0; slot < unit.getNumberOfCriticals(loc); slot++) {
+            for (int slot = 0; slot < unit.getNumberOfCriticalSlots(loc); slot++) {
                 final CriticalSlot criticalSlot = unit.getCritical(loc, slot);
                 if ((null != criticalSlot) &&
                       (criticalSlot.getType() == CriticalSlot.TYPE_EQUIPMENT) &&
                       (null != criticalSlot.getMount()) &&
                       criticalSlot.getMount().getType().equals(eq)) {
-                    unit.getMisc().remove(criticalSlot.getMount());
+                    Mounted<?> mount = criticalSlot.getMount();
+
+                    if (mount instanceof MiscMounted) {
+                        unit.getMisc().remove(mount);
+                    }
+
                     unit.setCritical(loc, slot, null);
                 }
             }
         }
 
         unit.setArmorType(EquipmentType.T_ARMOR_STANDARD, loc);
-        unit.setArmorTechLevel(TechConstants.T_INTRO_BOXSET, loc);
+        unit.setArmorTechLevel(TechConstants.T_INTRO_BOX_SET, loc);
     }
 
     public static void checkArmor(Entity unit) {
@@ -1732,7 +1745,7 @@ public class UnitUtil {
         return sb.toString();
     }
 
-    public static void removeAllMiscMounteds(Entity unit, EquipmentFlag flag) {
+    public static void removeAllMiscMounted(Entity unit, EquipmentFlag flag) {
         for (int pos = unit.getEquipment().size() - 1; pos >= 0; pos--) {
             Mounted<?> mount = unit.getEquipment().get(pos);
             if ((mount.getType() instanceof MiscType) && mount.getType().hasFlag(flag)) {
@@ -1741,7 +1754,7 @@ public class UnitUtil {
         }
     }
 
-    public static void removeAllMounteds(Entity unit, EquipmentType et) {
+    public static void removeAllMounted(Entity unit, EquipmentType et) {
         for (int pos = unit.getEquipment().size() - 1; pos >= 0; pos--) {
             Mounted<?> mount = unit.getEquipment().get(pos);
             if (mount.getType().equals(et)) {
@@ -1753,7 +1766,7 @@ public class UnitUtil {
     public static void removeTC(Entity unit) {
         for (int pos = unit.getEquipment().size() - 1; pos >= 0; pos--) {
             Mounted<?> mount = unit.getEquipment().get(pos);
-            if ((mount.getType() instanceof MiscType) && mount.getType().hasFlag(MiscType.F_TARGCOMP)) {
+            if ((mount.getType() instanceof MiscType) && mount.getType().hasFlag(MiscType.F_TARGETING_COMPUTER)) {
                 UnitUtil.removeMounted(unit, mount);
             }
         }
@@ -1821,7 +1834,7 @@ public class UnitUtil {
               .filter(m -> m.getLocation() == Entity.LOC_NONE)
               .toList();
 
-        removed.forEach(m -> UnitUtil.removeCriticals(entity, m));
+        removed.forEach(m -> UnitUtil.removeCriticalSlots(entity, m));
 
         removed.stream()
               .filter(m -> !(m.getType() instanceof BayWeapon))
@@ -1867,7 +1880,7 @@ public class UnitUtil {
                 }
             }
         } else {
-            for (int slot = 0; slot < entity.getNumberOfCriticals(fromLoc); slot++) {
+            for (int slot = 0; slot < entity.getNumberOfCriticalSlots(fromLoc); slot++) {
                 final CriticalSlot criticalSlot = entity.getCritical(fromLoc, slot);
                 if ((null != criticalSlot) && (criticalSlot.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
                     copyEquipment(entity, toLoc, criticalSlot.getMount(), removed);
@@ -1879,7 +1892,7 @@ public class UnitUtil {
         try {
             MekFileParser.postLoadInit(entity);
         } catch (Exception ex) {
-            logger.error("", ex);
+            LOGGER.error("", ex);
         }
     }
 
@@ -1926,12 +1939,16 @@ public class UnitUtil {
     public static void removeHiddenAmmo(Mounted<?> mounted) {
         EquipmentType launcherType = mounted.getType();
         if ((launcherType instanceof WeaponType) &&
-              (launcherType.hasFlag(WeaponType.F_ONESHOT) ||
+              (launcherType.hasFlag(WeaponType.F_ONE_SHOT) ||
                     (((WeaponType) launcherType).getAmmoType() == AmmoType.AmmoTypeEnum.INFANTRY))) {
             Mounted<?> oneShotAmmo = mounted.getLinked();
             if (oneShotAmmo != null) {
                 mounted.getEntity().getEquipment().remove(oneShotAmmo);
-                mounted.getEntity().getAmmo().remove(oneShotAmmo);
+
+                if (oneShotAmmo instanceof AmmoMounted) {
+                    mounted.getEntity().getAmmo().remove(oneShotAmmo);
+                }
+
                 mounted.setLinked(null);
             }
         }
@@ -1970,7 +1987,7 @@ public class UnitUtil {
             if (m.getType() instanceof AmmoWeapon ammoWeaponType) {
                 if ((ammoWeaponType.getAmmoType() == ammoType.getAmmoType()) &&
                       (ammoWeaponType.getRackSize() == ammoType.getRackSize()) &&
-                      (includeOneShot || !m.getType().hasFlag(WeaponType.F_ONESHOT))) {
+                      (includeOneShot || !m.getType().hasFlag(WeaponType.F_ONE_SHOT))) {
                     return true;
                 }
             } else if ((ammoType instanceof SmallWeaponAmmoType smallWeaponAmmoType) &&
@@ -2013,7 +2030,7 @@ public class UnitUtil {
                         equipmentType.hasFlag(MiscType.F_INDUSTRIAL_TSM) ||
                         (equipmentType.hasFlag(MiscType.F_MASC) &&
                               !equipmentType.hasSubType(MiscType.S_SUPERCHARGER) &&
-                              !equipmentType.hasSubType(MiscType.S_JETBOOSTER)) ||
+                              !equipmentType.hasSubType(MiscType.S_JET_BOOSTER)) ||
                         equipmentType.hasFlag(MiscType.F_SCM))) {
                 continue;
             }
@@ -2027,7 +2044,7 @@ public class UnitUtil {
             UnitUtil.removeMounted(unit, m);
         }
 
-        if (unit instanceof megamek.common.Infantry pbi) {
+        if (unit instanceof Infantry pbi) {
             if ((null != pbi.getPrimaryWeapon()) && !techManager.isLegal(pbi.getPrimaryWeapon())) {
                 dirty = true;
                 InfantryUtil.replaceMainWeapon(pbi, (InfantryWeapon) EquipmentType.get("Infantry Auto Rifle"), false);
@@ -2155,7 +2172,7 @@ public class UnitUtil {
                 StringBuilder sb = new StringBuilder();
                 String[] lines = blk.getAllDataAsString();
                 for (String line : lines) {
-                    sb.append(line).append(System.lineSeparator());
+                    sb.append(line).append(java.lang.System.lineSeparator());
                 }
                 unitAsString = sb.toString();
             }
@@ -2197,13 +2214,13 @@ public class UnitUtil {
             newEntity.setOwner(entity.getOwner());
             return newEntity;
         } catch (Exception e) {
-            logger.error(e, "Failed to break references for entity {}", entity);
+            LOGGER.error(e, "Failed to break references for entity {}", entity);
             return null;
         }
     }
 
     /**
-     * Reset the damage of the unity to its original state.
+     * Reset the damage to the unit to its original state.
      *
      * @param entity The entity to reset
      */
@@ -2221,7 +2238,7 @@ public class UnitUtil {
             mounted.setDumping(false);
         }
         for (int loc = 0; loc < entity.locations(); loc++) {
-            for (int slot = 0; slot < entity.getNumberOfCriticals(loc); slot++) {
+            for (int slot = 0; slot < entity.getNumberOfCriticalSlots(loc); slot++) {
                 CriticalSlot cs = entity.getCritical(loc, slot);
                 if (cs != null) {
                     cs.setDestroyed(false);
@@ -2253,7 +2270,7 @@ public class UnitUtil {
             }
         }
         for (int loc = 0; loc < entity.locations(); loc++) {
-            for (int slot = 0; slot < entity.getNumberOfCriticals(loc); slot++) {
+            for (int slot = 0; slot < entity.getNumberOfCriticalSlots(loc); slot++) {
                 CriticalSlot cs = entity.getCritical(loc, slot);
                 if (cs != null && (cs.isDamaged() || cs.isMissing())) {
                     return true;
@@ -2286,5 +2303,10 @@ public class UnitUtil {
             }
         }
         return false;
+    }
+
+    public static String getPrintName(Entity e) {
+        return CConfig.getMekNameArrangement().printChassis(e)
+              + (StringUtility.isNullOrBlank(e.getModel()) ? "" : " " + e.getModel());
     }
 }

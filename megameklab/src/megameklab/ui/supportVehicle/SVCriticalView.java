@@ -43,13 +43,12 @@ import javax.swing.ListSelectionModel;
 
 import megamek.client.ui.util.UIUtil.FixedYPanel;
 import megamek.common.CriticalSlot;
-import megamek.common.FixedWingSupport;
-import megamek.common.Mounted;
-import megamek.common.SuperHeavyTank;
-import megamek.common.Tank;
-import megamek.common.VTOL;
 import megamek.common.annotations.Nullable;
-import megamek.logging.MMLogger;
+import megamek.common.equipment.Mounted;
+import megamek.common.units.FixedWingSupport;
+import megamek.common.units.SuperHeavyTank;
+import megamek.common.units.Tank;
+import megamek.common.units.VTOL;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.CritCellUtil;
 import megameklab.ui.util.DropTargetCriticalList;
@@ -63,7 +62,6 @@ import megameklab.ui.util.RefreshListener;
  * @author Simon (Juliez)
  */
 public class SVCriticalView extends IView {
-    private static final MMLogger logger = MMLogger.create(SVCriticalView.class);
 
     private final JPanel leftPanel = new JPanel();
     private final JPanel rightPanel = new JPanel();
@@ -79,8 +77,8 @@ public class SVCriticalView extends IView {
     private RefreshListener refresh;
 
     private final Map<Integer, JComponent> aeroLocations = Map.of(FixedWingSupport.LOC_NOSE, frontPanel,
-          FixedWingSupport.LOC_LWING, leftPanel,
-          FixedWingSupport.LOC_RWING, rightPanel, FixedWingSupport.LOC_BODY, bodyPanel, FixedWingSupport.LOC_AFT,
+          FixedWingSupport.LOC_LEFT_WING, leftPanel,
+          FixedWingSupport.LOC_RIGHT_WING, rightPanel, FixedWingSupport.LOC_BODY, bodyPanel, FixedWingSupport.LOC_AFT,
           rearPanel);
 
     private final Map<Integer, JComponent> vtolLocations = Map.of(Tank.LOC_FRONT, frontPanel, Tank.LOC_LEFT, leftPanel,
@@ -93,10 +91,10 @@ public class SVCriticalView extends IView {
           Tank.LOC_TURRET_2, dualTurretPanel);
 
     private final Map<Integer, JComponent> superHvyLocations = Map.of(Tank.LOC_FRONT, frontPanel,
-          SuperHeavyTank.LOC_FRONTLEFT, leftPanel, SuperHeavyTank.LOC_FRONTRIGHT, rightPanel,
+          SuperHeavyTank.LOC_FRONT_LEFT, leftPanel, SuperHeavyTank.LOC_FRONT_RIGHT, rightPanel,
           Tank.LOC_BODY, bodyPanel, SuperHeavyTank.LOC_REAR, rearPanel, SuperHeavyTank.LOC_TURRET, turretPanel,
           SuperHeavyTank.LOC_TURRET_2, dualTurretPanel,
-          SuperHeavyTank.LOC_REARLEFT, rearLeftPanel, SuperHeavyTank.LOC_REARRIGHT, rearRightPanel);
+          SuperHeavyTank.LOC_REAR_LEFT, rearLeftPanel, SuperHeavyTank.LOC_REAR_RIGHT, rearRightPanel);
 
     SVCriticalView(EntitySource eSource, RefreshListener refresh) {
         super(eSource);
@@ -179,7 +177,7 @@ public class SVCriticalView extends IView {
             for (int location = 0; location < getEntity().locations(); location++) {
                 Vector<String> critNames = new Vector<>(1, 1);
 
-                for (int slot = 0; slot < getEntity().getNumberOfCriticals(location); slot++) {
+                for (int slot = 0; slot < getEntity().getNumberOfCriticalSlots(location); slot++) {
                     CriticalSlot cs = getEntity().getCritical(location, slot);
                     if (cs == null) {
                         continue;
@@ -187,46 +185,57 @@ public class SVCriticalView extends IView {
                     if (cs.getType() == CriticalSlot.TYPE_SYSTEM) {
                         critNames.add(getMek().getSystemName(cs.getIndex()));
                     } else if (cs.getType() == CriticalSlot.TYPE_EQUIPMENT) {
-                        Mounted<?> m = cs.getMount();
+                        Mounted<?> mounted = cs.getMount();
                         // Critical didn't get removed. Remove it now.
-                        if (m == null) {
+                        if (mounted == null) {
                             getEntity().setCritical(location, slot, null);
                             continue;
                         }
-                        StringBuilder critName = new StringBuilder(m.getName());
-                        if (critName.length() > 25) {
-                            critName.setLength(25);
-                            critName.append("...");
-                        }
-                        if (m.isRearMounted()) {
-                            critName.append(" (R)");
-                        }
-                        if (m.isSponsonTurretMounted()) {
-                            critName.append(" (ST)");
-                        }
-                        if (m.isPintleTurretMounted()) {
-                            critName.append(" (PT)");
-                        }
+                        StringBuilder critName = getCritName(mounted);
                         critNames.add(critName.toString());
                     }
                 }
 
                 if (critNames.isEmpty()) {
-                    critNames.add(CritCellUtil.EMPTY_CRITCELL_TEXT);
+                    critNames.add(CritCellUtil.EMPTY_CRITICAL_CELL_TEXT);
                 }
-                DropTargetCriticalList<String> criticalSlotList = new DropTargetCriticalList<>(critNames, eSource,
-                      refresh, true);
-                criticalSlotList.setVisibleRowCount(critNames.size());
-                criticalSlotList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-                criticalSlotList.setName(location + "");
-                criticalSlotList.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-                criticalSlotList.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+                DropTargetCriticalList<String> criticalSlotList = getCriticalSlotList(critNames,
+                      location);
                 if (panelForLocation(location) != null) {
                     panelForLocation(location).add(criticalSlotList);
                 }
             }
             validate();
         }
+    }
+
+    private DropTargetCriticalList<String> getCriticalSlotList(Vector<String> critNames, int location) {
+        DropTargetCriticalList<String> criticalSlotList = new DropTargetCriticalList<>(critNames, eSource,
+              refresh, true);
+        criticalSlotList.setVisibleRowCount(critNames.size());
+        criticalSlotList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        criticalSlotList.setName(location + "");
+        criticalSlotList.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        criticalSlotList.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
+        return criticalSlotList;
+    }
+
+    private static StringBuilder getCritName(Mounted<?> m) {
+        StringBuilder critName = new StringBuilder(m.getName());
+        if (critName.length() > 25) {
+            critName.setLength(25);
+            critName.append("...");
+        }
+        if (m.isRearMounted()) {
+            critName.append(" (R)");
+        }
+        if (m.isSponsonTurretMounted()) {
+            critName.append(" (ST)");
+        }
+        if (m.isPintleTurretMounted()) {
+            critName.append(" (PT)");
+        }
+        return critName;
     }
 
     private @Nullable JComponent panelForLocation(int location) {

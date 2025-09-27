@@ -42,7 +42,16 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-import megamek.common.*;
+import megamek.common.bays.Bay;
+import megamek.common.bays.StandardSeatCargoBay;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Transporter;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.InfantryCompartment;
+import megamek.common.units.SupportTank;
+import megamek.common.units.Tank;
+import megamek.common.units.VTOL;
 import megameklab.printing.reference.ClusterHitsTable;
 import megameklab.printing.reference.GroundMovementRecord;
 import megameklab.printing.reference.GroundToHitMods;
@@ -142,6 +151,9 @@ public class PrintTank extends PrintEntity {
         if (tank.isSupportVehicle()) {
             sb.append("Support ");
         }
+        if (tank.isOmni()) {
+            sb.append("Omni");
+        }
         if (tank instanceof VTOL) {
             sb.append("VTOL");
         } else {
@@ -184,10 +196,7 @@ public class PrintTank extends PrintEntity {
         if (tank.isSuperHeavy() && !(tank instanceof VTOL)) {
             return false;
         }
-        if (tank.isNaval() && !tank.hasNoDualTurret()) {
-            return false;
-        }
-        return true;
+        return !tank.isNaval() || tank.hasNoDualTurret();
     }
 
     @Override
@@ -201,21 +210,21 @@ public class PrintTank extends PrintEntity {
             sj.add(String.join(", ", chassisMods)
                   + (chassisMods.size() == 1 ? " Chassis Mod" : " Chassis Mods"));
         }
-        if (tank.hasWorkingMisc(MiscType.F_ADVANCED_FIRECONTROL)) {
+        if (tank.hasWorkingMisc(MiscType.F_ADVANCED_FIRE_CONTROL)) {
             sj.add("Advanced Fire Control");
-        } else if (tank.hasWorkingMisc(MiscType.F_BASIC_FIRECONTROL)) {
+        } else if (tank.hasWorkingMisc(MiscType.F_BASIC_FIRE_CONTROL)) {
             sj.add("Basic Fire Control");
         }
         Map<String, Double> transport = new HashMap<>();
         Map<String, Integer> seating = new HashMap<>();
-        for (Transporter t : tank.getTransports()) {
-            if (t instanceof InfantryCompartment) {
-                transport.merge("Infantry Compartment", t.getUnused(), Double::sum);
-            } else if (t instanceof StandardSeatCargoBay) {
-                seating.merge(((Bay) t).getType(), (int) ((Bay) t).getCapacity(), Integer::sum);
+        for (Transporter transporter : tank.getTransports()) {
+            if (transporter instanceof InfantryCompartment) {
+                transport.merge("Infantry Compartment", transporter.getUnused(), Double::sum);
+            } else if (transporter instanceof StandardSeatCargoBay) {
+                seating.merge(transporter.getType(), (int) ((Bay) transporter).getCapacity(), Integer::sum);
                 // SVs have separate Bay handling similar to Small Craft, with doors. CVs just have bulk cargo space.
-            } else if (t instanceof Bay && !(tank instanceof SupportTank)) {
-                transport.merge(((Bay) t).getType(), ((Bay) t).getCapacity(), Double::sum);
+            } else if (transporter instanceof Bay && !(tank instanceof SupportTank)) {
+                transport.merge(transporter.getType(), ((Bay) transporter).getCapacity(), Double::sum);
             }
         }
         for (Map.Entry<String, Integer> e : seating.entrySet()) {

@@ -37,12 +37,12 @@ import java.text.NumberFormat;
 import java.util.StringJoiner;
 
 import megamek.client.ui.util.UIUtil;
-import megamek.common.BattleArmor;
-import megamek.common.Entity;
-import megamek.common.EquipmentType;
 import megamek.common.MPCalculationSetting;
-import megamek.common.MiscType;
-import megamek.common.battlevalue.BattleArmorBVCalculator;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.battleValue.BattleArmorBVCalculator;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscType;
+import megamek.common.units.Entity;
 import megameklab.util.BattleArmorUtil;
 import org.w3c.dom.Element;
 import org.w3c.dom.svg.SVGRectElement;
@@ -163,7 +163,7 @@ public class PrintBattleArmor extends PrintEntity {
                             fill = (!alive || isDamaged) ? getDamageFillColor() : FILL_WHITE;
                         }
                         Element pip = createPip(viewX + size * p, y, radius, strokeWidth, PipType.CIRCLE, fill,
-                              "armor", "T" + i, false);
+                              "armor", "T" + (i+1), false);
                         canvas.appendChild(pip);
                     }
                 }
@@ -202,7 +202,7 @@ public class PrintBattleArmor extends PrintEntity {
                 sj.add("Must detach DWP before moving full ground speed.");
             }
         }
-        if (battleArmor.isExoskeleton() && !battleArmor.hasWorkingMisc(MiscType.F_EXTENDED_LIFESUPPORT)) {
+        if (battleArmor.isExoskeleton() && !battleArmor.hasWorkingMisc(MiscType.F_EXTENDED_LIFE_SUPPORT)) {
             sj.add("Unsealed Exoskeleton.");
         }
         return sj.toString();
@@ -217,18 +217,12 @@ public class PrintBattleArmor extends PrintEntity {
      * 6 Troopers: Level I (ComStar, Word of Blake)
      */
     private String squadName() {
-        switch (battleArmor.getTroopers()) {
-            case 1:
-                return "SUIT";
-            case 3:
-                return "UN";
-            case 5:
-                return "POINT";
-            case 6:
-                return "LEVEL I";
-            default:
-            case 4:
-                return "SQUAD";
-        }
+        return switch (battleArmor.getTroopers()) {
+            case 1 -> "SUIT";
+            case 3 -> "UN";
+            case 5 -> "POINT";
+            case 6 -> "LEVEL I";
+            default -> "SQUAD";
+        };
     }
 }

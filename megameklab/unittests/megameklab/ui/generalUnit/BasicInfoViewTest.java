@@ -39,15 +39,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.io.InputStream;
 
-import megamek.common.Entity;
-import megamek.common.ITechnology.TechBase;
-import megamek.common.MekFileParser;
-import megamek.common.TechAdvancement;
 import megamek.common.TechConstants;
+import megamek.common.enums.TechBase;
 import megamek.common.loaders.BLKFile;
 import megamek.common.loaders.BLKTankFile;
 import megamek.common.loaders.EntityLoadingException;
 import megamek.common.loaders.EntitySavingException;
+import megamek.common.loaders.MekFileParser;
+import megamek.common.units.Entity;
 import megameklab.testing.util.InitializeTypes;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,9 +55,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(value = InitializeTypes.class)
 class BasicInfoViewTest {
-
-    // Filenames must be preceded with a slash to load from the testresources path
-    private final String resourcesPath = "/ui/generalUnit/BasicInfoViewTest/";
 
     @BeforeEach
     void setUp() {
@@ -69,6 +65,8 @@ class BasicInfoViewTest {
     }
 
     private Entity loadEntity(String filename) throws EntityLoadingException {
+        // Filenames must be preceded with a slash to load from the testresources path
+        String resourcesPath = "/ui/generalUnit/BasicInfoViewTest/";
         String path = resourcesPath + filename;
         InputStream is = getClass().getResourceAsStream(path);
         assertNotNull(is);
@@ -77,13 +75,13 @@ class BasicInfoViewTest {
 
     @Test
     void testSetTechAdvancementFromEarlyISUnofficial() throws EntityLoadingException, EntitySavingException {
-        String fname = "Puma Assault Tank PAT-001.blk";
-        Entity te = loadEntity(fname);
+        String fileName = "Puma Assault Tank PAT-001.blk";
+        Entity te = loadEntity(fileName);
 
         // Confirm expected Tech Base (IS) and Tech Level (Simple Intro)
         TechBase techBase = te.getTechBase();
         int techLevel = te.getTechLevel();
-        assertEquals(TechAdvancement.TechBase.IS, techBase);
+        assertEquals(TechBase.IS, techBase);
         assertEquals(TechConstants.T_SIMPLE_INTRO, techLevel);
 
         // Update Tech Level
@@ -97,7 +95,7 @@ class BasicInfoViewTest {
         techBase = newTE.getTechBase();
         techLevel = newTE.getTechLevel();
         // Confirm expected Tech Base (IS) and Tech Level (IS Unofficial)
-        assertEquals(TechAdvancement.TechBase.IS, techBase);
+        assertEquals(TechBase.IS, techBase);
         assertEquals(TechConstants.T_IS_UNOFFICIAL, techLevel);
         assertFalse(newTE.isClan());
     }

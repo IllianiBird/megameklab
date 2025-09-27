@@ -34,7 +34,7 @@ package megameklab.ui.generalUnit;
 
 import java.util.Vector;
 
-import megamek.common.AmmoType;
+import megamek.common.equipment.AmmoType;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.CritCellUtil;
 import megameklab.ui.util.IView;
@@ -62,7 +62,7 @@ public class SingleLocationEquipmentView extends IView {
             }
         }
         if (critNames.isEmpty()) {
-            critNames.add(CritCellUtil.EMPTY_CRITCELL_TEXT);
+            critNames.add(CritCellUtil.EMPTY_CRITICAL_CELL_TEXT);
         }
         mountList = new SingleLocationEquipmentList(getEntity(), refresh);
         add(mountList);

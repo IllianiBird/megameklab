@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -54,8 +53,18 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import megamek.common.*;
-import megamek.common.ITechnology.TechRating;
+import megamek.common.TechAdvancement;
+import megamek.common.enums.TechRating;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.EquipmentTypeLookup;
+import megamek.common.equipment.MiscType;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.EntityWeightClass;
+import megamek.common.units.SupportTank;
+import megamek.common.units.Tank;
+import megamek.common.units.VTOL;
 import megamek.common.verifier.TestSupportVehicle;
 import megameklab.ui.generalUnit.BuildView;
 import megameklab.ui.listeners.SVBuildListener;
@@ -80,7 +89,7 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
     /** Subset of possible types that does not include those that are not yet supported */
     private final List<TestSupportVehicle.SVType> SV_TYPES = Arrays.stream(TestSupportVehicle.SVType.values())
           .filter(t -> !t.equals(TestSupportVehicle.SVType.AIRSHIP)
-                && !t.equals(TestSupportVehicle.SVType.SATELLITE)).collect(Collectors.toList());
+                && !t.equals(TestSupportVehicle.SVType.SATELLITE)).toList();
     private final Map<TestSupportVehicle.SVType, String> typeNames = new EnumMap<>(TestSupportVehicle.SVType.class);
 
     private final static TechAdvancement TA_DUAL_TURRET = Tank.getDualTurretTA();
@@ -98,12 +107,12 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
 
     private final JSpinner spnTonnage = new JSpinner(spnTonnageModel);
     private final JCheckBox chkSmall = new JCheckBox();
-    private final CustomComboBox<ITechnology.TechRating> cbStructureTechRating = new CustomComboBox<>(ITechnology::getRatingName);
+    private final CustomComboBox<TechRating> cbStructureTechRating = new CustomComboBox<>(TechRating::getName);
     private final CustomComboBox<TestSupportVehicle.SVType> cbType = new CustomComboBox<>(t -> typeNames.getOrDefault(t,
           "?"));
     private final TechComboBox<TestSupportVehicle.SVEngine> cbEngine = new TechComboBox<>(e -> e.engine.getEngineName()
           .replaceAll("^\\d+ ", "").replace("[SV]", ""));
-    private final CustomComboBox<ITechnology.TechRating> cbEngineTechRating = new CustomComboBox<>(ITechnology::getRatingName);
+    private final CustomComboBox<TechRating> cbEngineTechRating = new CustomComboBox<>(TechRating::getName);
     private final CustomComboBox<Integer> cbTurrets = new CustomComboBox<>(i -> turretNames[i]);
     private final JCheckBox chkSponson = new JCheckBox();
     private final JLabel lblPintle = createLabel("lblPintle", "");
@@ -387,7 +396,7 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
      */
     private TechRating getStructuralTechRating() {
         TechRating selected = (TechRating) cbStructureTechRating.getSelectedItem();
-        return selected != null ? selected : ITechnology.TechRating.A;
+        return selected != null ? selected : TechRating.A;
     }
 
     /**
@@ -395,7 +404,7 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
      */
     private TechRating getEngineTechRating() {
         TechRating selected = (TechRating) cbEngineTechRating.getSelectedItem();
-        return selected != null ? selected : ITechnology.TechRating.A;
+        return selected != null ? selected : TechRating.A;
     }
 
     /**
@@ -453,7 +462,7 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
         // Engine::getTechRating will return the minimum tech rating for the engine type.
         cbEngineTechRating.removeActionListener(this);
         cbEngineTechRating.removeAllItems();
-        for (int r = entity.getEngine().getTechRating().getIndex(); r <= ITechnology.TechRating.F.getIndex(); r++) {
+        for (int r = entity.getEngine().getTechRating().getIndex(); r <= TechRating.F.getIndex(); r++) {
             cbEngineTechRating.addItem(TechRating.fromIndex(r));
         }
         cbEngineTechRating.setSelectedItem(entity.getEngineTechRating());
@@ -468,8 +477,7 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
             cbEngine.setSelectedIndex(0);
         }
 
-        if (entity instanceof Tank) {
-            Tank tank = (Tank) entity;
+        if (entity instanceof Tank tank) {
             if (!tank.hasNoDualTurret()) {
                 cbTurrets.setSelectedItem(SVBuildListener.TURRET_DUAL);
             } else if (!tank.hasNoTurret()) {
@@ -507,12 +515,12 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
             cbTurrets.setEnabled(false);
         }
 
-        if (entity.hasMisc(MiscType.F_ADVANCED_FIRECONTROL)) {
-            cbFireControl.setSelectedIndex(SVBuildListener.FIRECON_ADVANCED);
-        } else if (entity.hasMisc(MiscType.F_BASIC_FIRECONTROL)) {
-            cbFireControl.setSelectedIndex(SVBuildListener.FIRECON_BASIC);
+        if (entity.hasMisc(MiscType.F_ADVANCED_FIRE_CONTROL)) {
+            cbFireControl.setSelectedIndex(SVBuildListener.FIRE_CONTROL_ADVANCED);
+        } else if (entity.hasMisc(MiscType.F_BASIC_FIRE_CONTROL)) {
+            cbFireControl.setSelectedIndex(SVBuildListener.FIRE_CONTROL_BASIC);
         } else {
-            cbFireControl.setSelectedIndex(SVBuildListener.FIRECON_NONE);
+            cbFireControl.setSelectedIndex(SVBuildListener.FIRE_CONTROL_NONE);
         }
         if (entity.getWeightClass() == EntityWeightClass.WEIGHT_SMALL_SUPPORT) {
             spnFireConWtModel.setStepSize(1.0);
@@ -533,7 +541,8 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
               || chkPintleRight.isSelected()
               || chkPintleFront.isSelected()
               || chkPintleRear.isSelected()));
-        spnFireConWt.setEnabled(entity.isOmni() && (cbFireControl.getSelectedIndex() > SVBuildListener.FIRECON_NONE));
+        spnFireConWt.setEnabled(entity.isOmni() && (cbFireControl.getSelectedIndex()
+              > SVBuildListener.FIRE_CONTROL_NONE));
     }
 
     /**
@@ -696,7 +705,7 @@ public class SVChassisView extends BuildView implements ActionListener, ChangeLi
             case ACTION_SMALL:
                 resetWeightStandard();
                 listeners.forEach(l -> l.tonnageChanged(convertWeight((double) spnTonnage.getValue())));
-                // Switching between small and M/L makes either sponsons or pintles invalid
+                // Switching between small and M/L makes either sponsons or pintless invalid
                 if (chkSmall.isSelected()) {
                     listeners.forEach(l -> l.sponsonTurretChanged(false));
                 } else {

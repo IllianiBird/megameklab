@@ -51,8 +51,9 @@ import javax.swing.border.EmptyBorder;
 
 import megamek.client.ui.dialogs.UnitLoadingDialog;
 import megamek.client.ui.util.FluffImageHelper;
-import megamek.common.Entity;
-import megamek.common.EntityFluff;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityFluff;
+import megamek.common.units.System;
 import megamek.common.util.ImageUtil;
 import megamek.logging.MMLogger;
 import megameklab.ui.EntitySource;
@@ -97,8 +98,8 @@ public class FluffTab extends ITab implements FocusListener {
 
     private RefreshListener refresh;
 
-    public FluffTab(EntitySource esource) {
-        super(esource);
+    public FluffTab(EntitySource entitySource) {
+        super(entitySource);
         initUi();
     }
 
@@ -217,8 +218,6 @@ public class FluffTab extends ITab implements FocusListener {
         imgScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         imgScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-        gbcRight.gridx = 0;
-        gbcRight.gridy = 0;
         gbcRight.gridwidth = GridBagConstraints.REMAINDER; // Image spans all columns initially
         gbcRight.weightx = 1.0;
         gbcRight.weighty = 0.0; // Image area doesn't stretch vertically initially
@@ -341,8 +340,8 @@ public class FluffTab extends ITab implements FocusListener {
             gbcRight.gridwidth = 1; // Reset gridwidth
 
             // Loop through Systems
-            for (EntityFluff.System system : EntityFluff.System.values()) {
-                if ((system == EntityFluff.System.JUMPJET)
+            for (System system : System.values()) {
+                if ((system == System.JUMP_JET)
                       && eSource.getEntity().hasETypeFlag(Entity.ETYPE_AERO)) {
                     continue;
                 }
@@ -486,7 +485,7 @@ public class FluffTab extends ITab implements FocusListener {
             if (name != null && name.contains(":")) {
                 String[] fields = name.split(":");
                 try {
-                    EntityFluff.System system = EntityFluff.System.parse(fields[0]);
+                    System system = System.parse(fields[0]);
                     if (system != null) {
                         if (TAG_MANUFACTURER.equals(fields[1])) {
                             if (!getFluff().getSystemManufacturer(system).equals(text)) {
@@ -674,7 +673,7 @@ public class FluffTab extends ITab implements FocusListener {
                 if (name != null && name.contains(":")) {
                     String[] fields = name.split(":");
                     try {
-                        EntityFluff.System system = EntityFluff.System.parse(fields[0]);
+                        System system = System.parse(fields[0]);
                         if (system != null) {
                             if (TAG_MANUFACTURER.equals(fields[1])) {
                                 textField.setText(fluff.getSystemManufacturer(system));

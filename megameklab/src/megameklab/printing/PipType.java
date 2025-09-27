@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2017-2025 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -30,25 +30,18 @@
  * <https://www.xbox.com/en-US/developers/rules> and it is not endorsed by or
  * affiliated with Microsoft.
  */
-package megameklab.ui.generalUnit.summary;
+package megameklab.printing;
 
-import megamek.common.Entity;
-import megamek.common.Jumpship;
-import megamek.common.verifier.TestAdvancedAerospace;
-import megameklab.util.UnitUtil;
+import megamek.common.equipment.EquipmentType;
 
-public class LfBatterySummaryItem extends AbstractSummaryItem {
+public enum PipType {
+    CIRCLE, DIAMOND;
 
-    @Override
-    public String getName() {
-        return "LF Battery";
-    }
-
-    @Override
-    public void refresh(Entity entity) {
-        if (entity instanceof Jumpship) {
-            TestAdvancedAerospace testShip = (TestAdvancedAerospace) UnitUtil.getEntityVerifier(entity);
-            weightLabel.setText(formatWeight(testShip.getWeightLFBattery(), entity));
+    public static PipType forAT(int at) {
+        if (at == EquipmentType.T_ARMOR_HARDENED) {
+            return DIAMOND;
+        } else {
+            return CIRCLE;
         }
     }
 }

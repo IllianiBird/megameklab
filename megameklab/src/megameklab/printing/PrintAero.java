@@ -43,7 +43,12 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-import megamek.common.*;
+import megamek.common.bays.Bay;
+import megamek.common.bays.StandardSeatCargoBay;
+import megamek.common.equipment.DockingCollar;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Transporter;
+import megamek.common.units.*;
 import megameklab.printing.reference.AeroHitLocation;
 import megameklab.printing.reference.AeroToHitMods;
 import megameklab.printing.reference.AirToGroundAttackTable;
@@ -165,7 +170,8 @@ public class PrintAero extends PrintEntity {
         final int damage = (aero.getOSI() - aero.getSI());
         if (null != element) {
             ArmorPipLayout.addPips(this, element, aero.getOSI(),
-                  PipType.CIRCLE, DEFAULT_PIP_STROKE, FILL_WHITE, damage, useAlternateArmorGrouping());
+                  PipType.CIRCLE, DEFAULT_PIP_STROKE, FILL_WHITE, damage, useAlternateArmorGrouping(), "structure",
+                  "SI", false);
         }
     }
 
@@ -204,21 +210,23 @@ public class PrintAero extends PrintEntity {
         } else if ((aero instanceof ConvFighter) && aero.isVSTOL()) {
             sj.add("VSTOL Equipment");
         }
-        if (aero.hasWorkingMisc(MiscType.F_ADVANCED_FIRECONTROL)) {
+        if (aero.hasWorkingMisc(MiscType.F_ADVANCED_FIRE_CONTROL)) {
             sj.add("Advanced Fire Control");
-        } else if (aero.hasWorkingMisc(MiscType.F_BASIC_FIRECONTROL)) {
+        } else if (aero.hasWorkingMisc(MiscType.F_BASIC_FIRE_CONTROL)) {
             sj.add("Basic Fire Control");
         }
         Map<String, Double> transport = new HashMap<>();
         Map<String, Integer> seating = new HashMap<>();
-        for (Transporter t : aero.getTransports()) {
-            if (t instanceof InfantryCompartment) {
-                transport.merge("Infantry Compartment", t.getUnused(), Double::sum);
-            } else if (t instanceof StandardSeatCargoBay) {
-                seating.merge(((Bay) t).getType(), (int) ((Bay) t).getCapacity(), Integer::sum);
+        for (Transporter transporter : aero.getTransports()) {
+            if (transporter instanceof InfantryCompartment) {
+                transport.merge("Infantry Compartment", transporter.getUnused(), Double::sum);
+            } else if (transporter instanceof StandardSeatCargoBay) {
+                seating.merge(transporter.getType(), (int) ((Bay) transporter).getCapacity(), Integer::sum);
                 // include cargo bays for fighters and fixed wing, but small craft get a block for transport bays
-            } else if (t instanceof Bay && !((Bay) t).isQuarters() && !(aero instanceof SmallCraft)) {
-                transport.merge(((Bay) t).getType(), ((Bay) t).getCapacity(), Double::sum);
+            } else if (transporter instanceof Bay
+                  && !((Bay) transporter).isQuarters()
+                  && !(aero instanceof SmallCraft)) {
+                transport.merge(transporter.getType(), ((Bay) transporter).getCapacity(), Double::sum);
             }
         }
         for (Map.Entry<String, Integer> e : seating.entrySet()) {
@@ -271,7 +279,7 @@ public class PrintAero extends PrintEntity {
         int nRows = (capacity + 4) / 5;
         double boxWidth = bbox.getWidth() / 5.0;
         double boxHeight = bbox.getHeight() / 4.0;
-        double ypos = bbox.getMinY() + 1.0;
+        double yPosition = bbox.getMinY() + 1.0;
         for (int r = 0; r < nRows; r++) {
             int cols;
             if ((r + 1 < nRows) || (capacity % 5) == 0) {
@@ -279,19 +287,19 @@ public class PrintAero extends PrintEntity {
             } else {
                 cols = capacity % 5;
             }
-            double xpos = bbox.getCenterX() - cols * boxWidth * 0.5 + 1.0;
+            double xPosition = bbox.getCenterX() - cols * boxWidth * 0.5 + 1.0;
             for (int c = 0; c < cols; c++) {
-                Element path = createRoundedRectangle(xpos, ypos, boxWidth - 2.0, boxHeight - 2.0,
+                Element path = createRoundedRectangle(xPosition, yPosition, boxWidth - 2.0, boxHeight - 2.0,
                       4.3, 2.375, 0.966, FILL_BLACK);
                 canvas.appendChild(path);
-                xpos += boxWidth;
+                xPosition += boxWidth;
             }
-            ypos += boxHeight;
+            yPosition += boxHeight;
         }
         Element key = getSVGDocument().getElementById(EXTERNAL_STORES_KEY);
         if (null != key) {
             key.setAttributeNS(null, SVGConstants.SVG_TRANSFORM_ATTRIBUTE,
-                  SVGConstants.SVG_TRANSLATE_VALUE + "(0," + ypos + ")");
+                  SVGConstants.SVG_TRANSLATE_VALUE + "(0," + yPosition + ")");
         }
     }
 
@@ -388,8 +396,7 @@ public class PrintAero extends PrintEntity {
     protected int getCollarDamage() {
         List<DockingCollar> collars = aero.getDockingCollars();
         int collarDamage = 0;
-        for (int i = 0; i < collars.size(); i++) {
-            final DockingCollar collar = collars.get(i);
+        for (final DockingCollar collar : collars) {
             if (collar.isDamaged()) {
                 collarDamage += 1;
             }

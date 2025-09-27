@@ -32,12 +32,12 @@
  */
 package megameklab.printing.reference;
 
-import megamek.common.ConvFighter;
-import megamek.common.Dropship;
-import megamek.common.Entity;
-import megamek.common.EntityMovementMode;
-import megamek.common.Jumpship;
-import megamek.common.SmallCraft;
+import megamek.common.units.ConvFighter;
+import megamek.common.units.Dropship;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.Jumpship;
+import megamek.common.units.SmallCraft;
 import megameklab.printing.PrintAero;
 import org.apache.batik.util.SVGConstants;
 
@@ -70,14 +70,14 @@ public class ControlRollTable extends ReferenceTable {
             if (atmosphereOnly) {
                 addRow("", "", bundle.getString("exceedCeiling"), "");
             }
-            addRow("", "", bundle.getString("rollMoreThanOnce") + "", "");
+            addRow("", "", bundle.getString("rollMoreThanOnce"), "");
             if (entity.getWalkMP() > 0) {
-                addRow("", "", bundle.getString("thrustExceedsSI") + "", "");
+                addRow("", "", bundle.getString("thrustExceedsSI"), "");
             }
             if (!spaceOnly) {
-                addRow("", "", bundle.getString("velocityOver2xThrust") + "", "");
-                addRow("", "", bundle.getString("stalling") + "", "");
-                addRow("", "", bundle.getString("descending3plus") + "", "");
+                addRow("", "", bundle.getString("velocityOver2xThrust"), "");
+                addRow("", "", bundle.getString("stalling"), "");
+                addRow("", "", bundle.getString("descending3plus"), "");
             }
         }
         addRow(NO_SHADE, bundle.getString("damage"), "", "");
@@ -102,11 +102,11 @@ public class ControlRollTable extends ReferenceTable {
         }
         if (!spaceOnly) {
             // Combining +2 atmospheric mod with the unit type adjustment
-            if (entity instanceof Dropship) {
+            if (entity instanceof Dropship dropship) {
                 addRow("",
                       bundle.getString("atmosphericOperations"),
                       "",
-                      ((Dropship) entity).isSpheroid() ? "+3" : "+2");
+                      dropship.isSpheroid() ? "+3" : "+2");
             } else {
                 addRow("", bundle.getString("atmosphericOperations"), "", "+1");
             }

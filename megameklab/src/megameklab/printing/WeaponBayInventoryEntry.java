@@ -37,14 +37,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
 
-import megamek.common.Aero;
-import megamek.common.AmmoType;
-import megamek.common.Dropship;
-import megamek.common.EquipmentType;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
-import megamek.common.WeaponType;
 import megamek.common.equipment.AmmoMounted;
+import megamek.common.equipment.AmmoType;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.WeaponType;
+import megamek.common.units.Aero;
+import megamek.common.units.Dropship;
 import megamek.common.util.AeroAVModCalculator;
 import megamek.common.weapons.CLIATMWeapon;
 import megamek.common.weapons.missiles.ATMWeapon;
@@ -67,9 +67,11 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
     private boolean apollo = false;
     private final List<String> weaponNames = new ArrayList<>();
     private final List<String> quantities = new ArrayList<>();
+    public final int index;
 
-    public WeaponBayInventoryEntry(Aero ship, WeaponBayText bay, boolean isCapital) {
+    public WeaponBayInventoryEntry(Aero ship, int index, WeaponBayText bay, boolean isCapital) {
         this.ship = ship;
+        this.index = index;
         this.bay = bay;
         this.isCapital = isCapital;
         this.isAR10 = bay.weapons.keySet().stream().anyMatch(w -> w.getAmmoType() == AmmoType.AmmoTypeEnum.AR10);
@@ -78,7 +80,7 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
 
     @Override
     public String getUniqueId() {
-        return "";
+        return "bay_"+String.valueOf(index);
     }
 
     private void processBay() {
@@ -101,8 +103,9 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
                 }
                 baySRV += Math.round(Math.ceil(av * 1.5) / 10.0);
                 bayMRV += Math.round(av / 10.0);
-                bayLRV += Math.round(Math.ceil(av * 0.5) / 10.0);
-                bayERV += Math.round(Math.ceil(av * 0.5) / 10.0);
+                long bayRV = Math.round(Math.ceil(av * 0.5) / 10.0);
+                bayLRV += bayRV;
+                bayERV += bayRV;
                 standardBaySRV += Math.ceil(av * 1.5);
                 standardBayMRV += av;
                 standardBayLRV += Math.ceil(av * 0.5);
@@ -137,7 +140,7 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
                 }
             }
         }
-        // PPC capacitors in bays are considered alway charged
+        // PPC capacitors in bays are considered always charged
         if (!isCapital) {
             for (Map<EquipmentType, Integer> entry : bay.augmentations.values()) {
                 heat += entry.entrySet().stream()
@@ -159,16 +162,16 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
                 // Show official names of DropShip side arcs. Rear-mounted wing bays
                 // are indicated by (R) appended to the name field.
                 if (ship instanceof Dropship
-                      && (bay.loc.get(i) == Dropship.LOC_LWING
-                      || bay.loc.get(i) == Dropship.LOC_RWING)) {
+                      && (bay.loc.get(i) == Dropship.LOC_LEFT_WING
+                      || bay.loc.get(i) == Dropship.LOC_RIGHT_WING)) {
                     if (ship.isSpheroid()) {
-                        if (bay.loc.get(i) == Dropship.LOC_LWING) {
+                        if (bay.loc.get(i) == Dropship.LOC_LEFT_WING) {
                             locString.add(bay.rear ? "ALS" : "FLS");
                         } else {
                             locString.add(bay.rear ? "ARS" : "FRS");
                         }
                     } else {
-                        if (bay.loc.get(i) == Dropship.LOC_LWING) {
+                        if (bay.loc.get(i) == Dropship.LOC_LEFT_WING) {
                             locString.add("LW");
                         } else {
                             locString.add("RW");
@@ -192,7 +195,7 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
                             ammoDetails.add(am.getBaseShotsLeft() + " " + am.getShortName());
                         }
                     });
-                    nameString.append(ammoDetails.toString());
+                    nameString.append(ammoDetails);
                     nameString.append(")");
                 } else if (weaponType.isCapital() && weaponType.hasFlag(WeaponType.F_MISSILE)) {
                     nameString.append(" (").append(ammo.getBaseShotsLeft()).append(" missiles)");
@@ -328,7 +331,7 @@ public class WeaponBayInventoryEntry implements InventoryEntry {
     }
 
     @Override
-    public String getModField(int row) {
+    public String getModField(int row, boolean baseOnly) {
         // todo: get someone who knows what an aerospace is to implement this
         return "";
     }

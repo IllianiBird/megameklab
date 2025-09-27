@@ -51,9 +51,9 @@ import javax.swing.ListSelectionModel;
 import javax.swing.table.TableColumn;
 
 import megamek.client.ui.util.UIUtil;
-import megamek.common.EquipmentType;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
 import megamek.logging.MMLogger;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.AbstractEquipmentDatabaseView;
@@ -74,7 +74,7 @@ import megameklab.util.UnitUtil;
  * @author Simon (Juliez)
  */
 public abstract class AbstractEquipmentTab extends ITab {
-    private static final MMLogger logger = MMLogger.create(AbstractEquipmentTab.class);
+    private static final MMLogger LOGGER = MMLogger.create(AbstractEquipmentTab.class);
 
     protected RefreshListener refresh;
 
@@ -85,7 +85,7 @@ public abstract class AbstractEquipmentTab extends ITab {
     public AbstractEquipmentTab(EntitySource eSource) {
         super(eSource);
 
-        loadOutModel = new CriticalTableModel(eSource.getEntity(), CriticalTableModel.WEAPONTABLE);
+        loadOutModel = new CriticalTableModel(eSource.getEntity(), CriticalTableModel.WEAPON_TABLE);
         loadOutTable.setModel(loadOutModel);
         loadOutTable.setIntercellSpacing(new Dimension(0, 0));
         loadOutTable.setShowGrid(false);
@@ -184,7 +184,7 @@ public abstract class AbstractEquipmentTab extends ITab {
                 } catch (IndexOutOfBoundsException ignored) {
                     return;
                 } catch (Exception ex) {
-                    logger.error("", ex);
+                    LOGGER.error("", ex);
                     return;
                 }
             } else {

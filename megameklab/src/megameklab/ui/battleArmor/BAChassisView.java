@@ -48,9 +48,9 @@ import javax.swing.SpinnerNumberModel;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-import megamek.common.BattleArmor;
-import megamek.common.EntityWeightClass;
-import megamek.common.ITechManager;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.EntityWeightClass;
 import megameklab.ui.generalUnit.BuildView;
 import megameklab.ui.listeners.BABuildListener;
 import megameklab.ui.util.CustomComboBox;
@@ -84,7 +84,7 @@ public class BAChassisView extends BuildView implements ActionListener, ChangeLi
     private final JComboBox<String> cbTurretType = new JComboBox<>();
     private final JSpinner spnTurretSize = new JSpinner(spnTurretSizeModel);
 
-    private ITechManager techManager;
+    private final ITechManager techManager;
 
     public BAChassisView(ITechManager techManager) {
         this.techManager = techManager;

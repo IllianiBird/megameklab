@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2021-2025 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -37,11 +37,11 @@ import static megameklab.ui.util.EquipmentTableModel.*;
 import java.util.Collection;
 import java.util.List;
 
-import megamek.common.BattleArmor;
-import megamek.common.EquipmentType;
-import megamek.common.LocationFullException;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.exceptions.LocationFullException;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.AbstractEquipmentDatabaseView;
 import megameklab.util.BattleArmorUtil;
@@ -52,10 +52,11 @@ import megameklab.util.UnitUtil;
  */
 class BAEquipmentDatabaseView extends AbstractEquipmentDatabaseView {
 
-    private final List<Integer> fluffColumns = List.of(COL_NAME, COL_TECH, COL_TLEVEL, COL_TRATING, COL_DPROTOTYPE,
-          COL_DPRODUCTION, COL_DCOMMON, COL_DEXTINCT, COL_DREINTRO, COL_COST);
+    private final List<Integer> fluffColumns = List.of(COL_NAME, COL_TECH, COL_TECH_LEVEL,
+          COL_TECH_RATING, COL_DATE_PROTOTYPE,
+          COL_DATE_PRODUCTION, COL_DATE_COMMON, COL_DATE_EXTINCT, COL_DATE_REINTRODUCED, COL_COST);
 
-    private final List<Integer> statsColumns = List.of(COL_NAME, COL_DAMAGE, COL_MRANGE, COL_RANGE,
+    private final List<Integer> statsColumns = List.of(COL_NAME, COL_DAMAGE, COL_MEDIUM_RANGE, COL_RANGE,
           COL_SHOTS, COL_TECH, COL_BV, COL_TON, COL_CRIT, COL_REF);
 
     public BAEquipmentDatabaseView(EntitySource eSource) {
@@ -64,7 +65,7 @@ class BAEquipmentDatabaseView extends AbstractEquipmentDatabaseView {
 
     @Override
     protected void addEquipment(EquipmentType equip, int count) {
-        if ((equip instanceof MiscType) && equip.hasFlag(MiscType.F_TARGCOMP)) {
+        if ((equip instanceof MiscType) && equip.hasFlag(MiscType.F_TARGETING_COMPUTER)) {
             if (!UnitUtil.hasTargComp(getBattleArmor())) {
                 UnitUtil.updateTC(getBattleArmor(), equip);
             }

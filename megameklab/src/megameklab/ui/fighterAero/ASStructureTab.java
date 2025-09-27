@@ -38,7 +38,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.util.List;
-import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -49,9 +48,24 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
 import megamek.codeUtilities.MathUtility;
-import megamek.common.*;
+import megamek.common.CriticalSlot;
+import megamek.common.SimpleTechLevel;
+import megamek.common.TechConstants;
+import megamek.common.bays.Bay;
+import megamek.common.enums.Faction;
 import megamek.common.equipment.ArmorType;
+import megamek.common.equipment.Engine;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.Transporter;
+import megamek.common.exceptions.LocationFullException;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.Aero;
+import megamek.common.units.Entity;
+import megamek.common.units.InfantryCompartment;
+import megamek.common.units.UnitRole;
 import megamek.common.verifier.BayData;
+import megamek.common.verifier.Ceil;
 import megamek.common.verifier.TestAero;
 import megamek.common.verifier.TestEntity;
 import megameklab.ui.EntitySource;
@@ -125,7 +139,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
               new MiscEquipmentSummaryItem(),
               new OtherSummaryItem());
 
-        GridBagConstraints gbc = new GridBagConstraints();
+        GridBagConstraints gbc;
 
         JPanel leftPanel = new JPanel();
         JPanel midPanel = new JPanel();
@@ -139,8 +153,6 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         leftPanel.add(iconView);
         leftPanel.add(panChassis);
         leftPanel.add(panHeat);
-        //leftPanel.add(Box.createGlue());
-        //leftPanel.add(Box.createVerticalGlue());
 
         midPanel.add(panMovement);
         midPanel.add(panFuel);
@@ -184,7 +196,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
     /*
      * Used by MekHQ to set the tech faction for custom refits.
      */
-    public void setTechFaction(ITechnology.Faction techFaction) {
+    public void setTechFaction(Faction techFaction) {
         panInfo.setTechFaction(techFaction);
     }
 
@@ -247,7 +259,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
 
     public void removeSystemCrits(int systemType) {
         for (int loc = 0; loc < getAero().locations(); loc++) {
-            for (int slot = 0; slot < getAero().getNumberOfCriticals(loc); slot++) {
+            for (int slot = 0; slot < getAero().getNumberOfCriticalSlots(loc); slot++) {
                 CriticalSlot cs = getAero().getCritical(loc, slot);
 
                 if ((cs == null) || (cs.getType() != CriticalSlot.TYPE_SYSTEM)) {
@@ -362,14 +374,14 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         if (getAero().hasPatchworkArmor()) {
             for (int loc = 0; loc < getAero().locations(); loc++) {
                 if (!getTechManager().isLegal(panPatchwork.getArmor(loc))) {
-                    getAero().setArmorType(EquipmentType.T_ARMOR_STANDARD, TechConstants.T_INTRO_BOXSET);
+                    getAero().setArmorType(EquipmentType.T_ARMOR_STANDARD, TechConstants.T_INTRO_BOX_SET);
                     UnitUtil.resetArmor(getAero(), loc);
                 }
             }
         } else if (!getTechManager().isLegal(panArmor.getArmor())) {
             UnitUtil.removeISorArmorMounts(getAero(), false);
         }
-        // If we have a large engine, a drop in tech level may make it unavailable and we will need
+        // If we have a large engine, a drop in tech level may make it unavailable, and we will need
         // to reduce speed to a legal value.
         if (getAero().getEngine().hasFlag(Engine.LARGE_ENGINE) && panChassis.getAvailableEngines().isEmpty()) {
             int walk;
@@ -437,7 +449,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
     public void armorTypeChanged(int at, int aTechLevel) {
         if (at != EquipmentType.T_ARMOR_PATCHWORK) {
             UnitUtil.removeISorArmorMounts(getAero(), false);
-            UnitUtil.compactCriticals(getAero());
+            UnitUtil.compactCriticalSlots(getAero());
             getAero().setArmorTechLevel(aTechLevel);
             getAero().setArmorType(at);
             panArmorAllocation.showPatchwork(false);
@@ -483,7 +495,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         double currentTonnage = UnitUtil.getEntityVerifier(getAero()).calculateWeight();
         currentTonnage += UnitUtil.getUnallocatedAmmoTonnage(getAero());
         double totalTonnage = getAero().getWeight();
-        double remainingTonnage = TestEntity.floor(totalTonnage - currentTonnage, TestEntity.Ceil.HALFTON);
+        double remainingTonnage = TestEntity.floor(totalTonnage - currentTonnage, Ceil.HALF_TON);
 
         double maxArmor = MathUtility.clamp(getAero().getArmorWeight() + remainingTonnage, 0,
               UnitUtil.getMaximumArmorTonnage(getAero()));
@@ -577,7 +589,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
 
     @Override
     public void engineChanged(Engine engine) {
-        // Make sure we keep same number of base heat sinks for omnis
+        // Make sure we keep same number of base heat sinks for OmniMeks
         engine.setBaseChassisHeatSinks(getAero().getEngine()
               .getBaseChassisHeatSinks(false));
         getAero().setEngine(engine);
@@ -612,7 +624,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
     @Override
     public void troopSpaceChanged(double fixed, double pod) {
         List<Transporter> toRemove = getAero().getTransports().stream()
-              .filter(t -> t instanceof InfantryCompartment).collect(Collectors.toList());
+              .filter(t -> t instanceof InfantryCompartment).toList();
         toRemove.forEach(t -> getAero().removeTransporter(t));
         double troopTons = Math
               .round((fixed) * 2) / 2.0;
@@ -640,7 +652,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         List<Transporter> toRemove = getAero().getTransports().stream()
               .filter(t -> (t instanceof Bay)
                     && (bayType == BayData.getBayType((Bay) t)))
-              .collect(Collectors.toList());
+              .toList();
         toRemove.forEach(t -> getAero().removeTransporter(t));
         double bayTons = Math
               .round((fixed) * 2) / 2.0;
@@ -718,8 +730,8 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
                 break;
         }
         getAero().initializeArmor(nose, Aero.LOC_NOSE);
-        getAero().initializeArmor(wing, Aero.LOC_LWING);
-        getAero().initializeArmor(wing, Aero.LOC_RWING);
+        getAero().initializeArmor(wing, Aero.LOC_LEFT_WING);
+        getAero().initializeArmor(wing, Aero.LOC_RIGHT_WING);
         getAero().initializeArmor(aft, Aero.LOC_AFT);
         getAero().autoSetThresh();
 
@@ -735,13 +747,13 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         UnitUtil.resetArmor(getAero(), location);
 
         int crits = armor.getPatchworkSlotsCVFtr();
-        if (getAero().getEmptyCriticals(location) < crits) {
+        if (getAero().getEmptyCriticalSlots(location) < crits) {
             JOptionPane.showMessageDialog(null,
                   String.format("%s does not fit in location %s. Resetting to Standard Armor in this location.",
                         armor.getName(), getAero().getLocationName(location)),
                   "Error", JOptionPane.INFORMATION_MESSAGE);
             getEntity().setArmorType(EquipmentType.T_ARMOR_STANDARD, location);
-            getEntity().setArmorTechLevel(TechConstants.T_INTRO_BOXSET);
+            getEntity().setArmorTechLevel(TechConstants.T_INTRO_BOX_SET);
         } else {
             getAero().setArmorType(armor.getArmorType(), location);
             getAero().setArmorTechLevel(armor.getTechLevel(getTechManager().getGameYear(), armor.isClan()));

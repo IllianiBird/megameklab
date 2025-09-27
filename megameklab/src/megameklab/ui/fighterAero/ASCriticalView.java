@@ -39,11 +39,11 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 
-import megamek.common.Aero;
 import megamek.common.CriticalSlot;
-import megamek.common.LocationFullException;
-import megamek.common.Mounted;
-import megamek.common.WeaponType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.WeaponType;
+import megamek.common.exceptions.LocationFullException;
+import megamek.common.units.Aero;
 import megamek.common.verifier.TestAero;
 import megamek.logging.MMLogger;
 import megameklab.ui.EntitySource;
@@ -92,19 +92,19 @@ public class ASCriticalView extends IView {
     private void setUI() {
         noseCrits = new BAASBMDropTargetCriticalList<>(
               new ArrayList<>(), eSource, refreshListener, true, this);
-        noseCrits.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+        noseCrits.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
         leftWingCrits = new BAASBMDropTargetCriticalList<>(
               new ArrayList<>(), eSource, refreshListener, true, this);
-        leftWingCrits.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+        leftWingCrits.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
         rightWingCrits = new BAASBMDropTargetCriticalList<>(
               new ArrayList<>(), eSource, refreshListener, true, this);
-        rightWingCrits.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+        rightWingCrits.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
         aftCrits = new BAASBMDropTargetCriticalList<>(
               new ArrayList<>(), eSource, refreshListener, true, this);
-        aftCrits.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+        aftCrits.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
         fuselageCrits = new BAASBMDropTargetCriticalList<>(
               new ArrayList<>(), eSource, refreshListener, true, this);
-        fuselageCrits.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+        fuselageCrits.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
 
         Box mainPanel = Box.createHorizontalBox();
         Box leftPanel = Box.createVerticalBox();
@@ -141,8 +141,8 @@ public class ASCriticalView extends IView {
 
         btnCopyLW.setAlignmentX(JComponent.CENTER_ALIGNMENT);
         btnCopyRW.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-        btnCopyLW.addActionListener(ev -> copyLocation(Aero.LOC_LWING, Aero.LOC_RWING));
-        btnCopyRW.addActionListener(ev -> copyLocation(Aero.LOC_RWING, Aero.LOC_LWING));
+        btnCopyLW.addActionListener(ev -> copyLocation(Aero.LOC_LEFT_WING, Aero.LOC_RIGHT_WING));
+        btnCopyRW.addActionListener(ev -> copyLocation(Aero.LOC_RIGHT_WING, Aero.LOC_LEFT_WING));
 
         leftPanel.add(leftWingPanel);
         middlePanel.add(nosePanel);
@@ -163,15 +163,16 @@ public class ASCriticalView extends IView {
             }
             Vector<String> critNames = new Vector<>(5);
             int numWeapons = 0;
-            for (int slot = 0; slot < getAero().getNumberOfCriticals(location); slot++) {
+            for (int slot = 0; slot < getAero().getNumberOfCriticalSlots(location); slot++) {
                 CriticalSlot cs = getAero().getCritical(location, slot);
                 if ((cs != null) && (cs.getType() == CriticalSlot.TYPE_EQUIPMENT)) {
                     Mounted<?> mounted = cs.getMount();
                     if (mounted == null) {
                         // Critical didn't get removed. Remove it now.
                         getAero().setCritical(location, slot, null);
-                        logger.warn(getAero().getLocationName(location) +
-                              " equipment in slot " + slot + " had not been cleanly removed!");
+                        logger.warn("{} equipment in slot {} had not been cleanly removed!",
+                              getAero().getLocationName(location),
+                              slot);
                         continue;
                     }
                     if (mounted.isWeaponGroup()) {
@@ -186,7 +187,7 @@ public class ASCriticalView extends IView {
 
             if (critNames.isEmpty()) {
                 // In a completely empty location, display a single empty slot
-                critNames.add(CritCellUtil.EMPTY_CRITCELL_TEXT);
+                critNames.add(CritCellUtil.EMPTY_CRITICAL_CELL_TEXT);
             }
 
             critListFor(location).setListData(critNames);
@@ -196,9 +197,9 @@ public class ASCriticalView extends IView {
             String usedCritText = "Weapons: " + numWeapons + " / " + availableSpace(location);
             if (location == Aero.LOC_NOSE) {
                 noseSpace.setText(usedCritText);
-            } else if (location == Aero.LOC_LWING) {
+            } else if (location == Aero.LOC_LEFT_WING) {
                 leftSpace.setText(usedCritText);
-            } else if (location == Aero.LOC_RWING) {
+            } else if (location == Aero.LOC_RIGHT_WING) {
                 rightSpace.setText(usedCritText);
             } else if (location == Aero.LOC_AFT) {
                 aftSpace.setText(usedCritText);
@@ -235,18 +236,13 @@ public class ASCriticalView extends IView {
     }
 
     private BAASBMDropTargetCriticalList<String> critListFor(int location) {
-        switch (location) {
-            case Aero.LOC_NOSE:
-                return noseCrits;
-            case Aero.LOC_LWING:
-                return leftWingCrits;
-            case Aero.LOC_RWING:
-                return rightWingCrits;
-            case Aero.LOC_AFT:
-                return aftCrits;
-            default:
-                return fuselageCrits;
-        }
+        return switch (location) {
+            case Aero.LOC_NOSE -> noseCrits;
+            case Aero.LOC_LEFT_WING -> leftWingCrits;
+            case Aero.LOC_RIGHT_WING -> rightWingCrits;
+            case Aero.LOC_AFT -> aftCrits;
+            default -> fuselageCrits;
+        };
     }
 
     private void copyLocation(int from, int to) {

@@ -55,12 +55,12 @@ import javax.swing.event.ChangeListener;
 
 import megamek.MegaMek;
 import megamek.client.ui.util.UIUtil;
-import megamek.common.EnhancedTabbedPane;
-import megamek.common.EnhancedTabbedPane.CloseableTab;
-import megamek.common.EnhancedTabbedPane.DetachedTabInfo;
-import megamek.common.EnhancedTabbedPane.TabStateListener;
-import megamek.common.Entity;
 import megamek.common.preference.PreferenceManager;
+import megamek.common.ui.CloseableTab;
+import megamek.common.ui.DetachedTabInfo;
+import megamek.common.ui.EnhancedTabbedPane;
+import megamek.common.ui.EnhancedTabbedPane.TabStateListener;
+import megamek.common.units.Entity;
 import megameklab.MMLConstants;
 import megameklab.MegaMekLab;
 import megameklab.ui.dialog.UiLoader;
@@ -132,6 +132,16 @@ public class MegaMekLabTabbedUI extends JFrame implements MenuBarOwner, ChangeLi
                     mainUI.reattachAllTabs();
                 }
                 return true;
+            }
+
+            @Override
+            public void onTabReattached(int tabIndex, Component component) {
+                if (component instanceof MegaMekLabMainUI editor) {
+                    editor.setTabOwner(MegaMekLabTabbedUI.this);
+                    if (!editors.contains(editor)) {
+                        editors.add(editor);
+                    }
+                }
             }
 
             @Override

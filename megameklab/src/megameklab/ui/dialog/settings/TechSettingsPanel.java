@@ -42,7 +42,7 @@ import javax.swing.JPanel;
 import javax.swing.SpringLayout;
 import javax.swing.border.EmptyBorder;
 
-import megamek.common.ITechnology;
+import megamek.common.interfaces.ITechnology;
 import megameklab.ui.util.IntRangeTextField;
 import megameklab.ui.util.SpringUtilities;
 import megameklab.util.CConfig;
@@ -101,7 +101,7 @@ public class TechSettingsPanel extends JPanel {
         chkUnofficialIgnoreYear.setText(resourceMap.getString("ConfigurationDialog.chkUnofficialIgnoreYear.text"));
         chkUnofficialIgnoreYear.setToolTipText(resourceMap.getString(
               "ConfigurationDialog.chkUnofficialIgnoreYear.tooltip"));
-        chkUnofficialIgnoreYear.setSelected(CConfig.getBooleanParam(CConfig.TECH_UNOFFICAL_NO_YEAR));
+        chkUnofficialIgnoreYear.setSelected(CConfig.getBooleanParam(CConfig.TECH_UNOFFICIAL_NO_YEAR));
 
         JPanel gridPanel = new JPanel(new SpringLayout());
         gridPanel.add(chkTechProgression);
@@ -123,7 +123,7 @@ public class TechSettingsPanel extends JPanel {
         techSettings.put(CConfig.TECH_YEAR, String.valueOf(txtTechYear.getIntVal()));
         techSettings.put(CConfig.TECH_SHOW_FACTION, String.valueOf(chkTechShowFaction.isSelected()));
         techSettings.put(CConfig.TECH_EXTINCT, String.valueOf(chkShowExtinct.isSelected()));
-        techSettings.put(CConfig.TECH_UNOFFICAL_NO_YEAR, String.valueOf(chkUnofficialIgnoreYear.isSelected()));
+        techSettings.put(CConfig.TECH_UNOFFICIAL_NO_YEAR, String.valueOf(chkUnofficialIgnoreYear.isSelected()));
         return techSettings;
     }
 }

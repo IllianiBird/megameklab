@@ -37,29 +37,16 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
-import megamek.common.Entity;
-import megamek.common.LandAirMek;
-import megamek.common.Mek;
-import megamek.common.MiscType;
-import megamek.common.MiscTypeFlag;
-import megamek.common.ProtoMek;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.enums.MiscTypeFlag;
+import megamek.common.units.Entity;
+import megamek.common.units.LandAirMek;
+import megamek.common.units.Mek;
+import megamek.common.units.ProtoMek;
 
-public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
+public record IntrinsicPhysicalInventoryEntry(String name, String location, String damage, String mod, boolean optional)
+      implements InventoryEntry {
     private final static DecimalFormat doubleFormat = new DecimalFormat("#.##");
-
-    private final String name;
-    private final String location;
-    private final String damage;
-    private final String mod;
-    private final boolean optional;
-
-    private IntrinsicPhysicalInventoryEntry(String name, String location, String damage, String mod, boolean optional) {
-        this.name = name;
-        this.location = location;
-        this.damage = damage;
-        this.mod = mod;
-        this.optional = optional;
-    }
 
     private static IntrinsicPhysicalInventoryEntry e(String name, String location, String damage, String mod) {
         return new IntrinsicPhysicalInventoryEntry(name, location, damage, mod, false);
@@ -123,27 +110,32 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
 
         var hasTsm = mek.hasTSM(true);
 
-        var hasLHand = mek.hasSystem(Mek.ACTUATOR_HAND, Mek.LOC_LARM);
-        var hasRHand = mek.hasSystem(Mek.ACTUATOR_HAND, Mek.LOC_RARM);
+        var hasLHand = mek.hasSystem(Mek.ACTUATOR_HAND, Mek.LOC_LEFT_ARM);
+        var hasRHand = mek.hasSystem(Mek.ACTUATOR_HAND, Mek.LOC_RIGHT_ARM);
+        boolean hasLLowerActuator = mek.hasSystem(Mek.ACTUATOR_LOWER_ARM, Mek.LOC_LEFT_ARM);
+        boolean hasRLowerActuator = mek.hasSystem(Mek.ACTUATOR_LOWER_ARM, Mek.LOC_RIGHT_ARM);
 
         // Punches
-        boolean hasLArmAES = mek.hasFunctionalArmAES(Mek.LOC_LARM);
-        boolean hasRArmAES = mek.hasFunctionalArmAES(Mek.LOC_RARM);
+        boolean hasLArmAES = mek.hasFunctionalArmAES(Mek.LOC_LEFT_ARM);
+        boolean hasRArmAES = mek.hasFunctionalArmAES(Mek.LOC_RIGHT_ARM);
         if (!mek.isQuadMek()) {
             var baseDmg = Math.ceil(mek.getWeight() / 10);
-            var dmg = formatDamage(baseDmg, hasTsm);
+
             if (mek instanceof LandAirMek) {
-                var airMekDamage = baseDmg / 2;
-                dmg = "%s/%s".formatted(dmg, formatDamage(airMekDamage, hasTsm));
+                baseDmg /= 2;
             }
+
+            var lDmg = formatDamage(hasLLowerActuator ? baseDmg : Math.floor(baseDmg / 2), hasTsm);
+            var rDmg = formatDamage(hasRLowerActuator ? baseDmg : Math.floor(baseDmg / 2), hasTsm);
+
             int mod;
             boolean explicitZero;
 
-            if (!mek.hasClaw(Mek.LOC_LARM)) {
+            if (!mek.hasClaw(Mek.LOC_LEFT_ARM)) {
                 explicitZero = false;
                 if (hasLHand) {
                     mod = 0;
-                } else if (mek.hasSystem(Mek.ACTUATOR_LOWER_ARM, Mek.LOC_LARM)) {
+                } else if (hasLLowerActuator) {
                     mod = 1;
                 } else {
                     mod = 2;
@@ -152,14 +144,14 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
                     mod--;
                     explicitZero = true;
                 }
-                entries.add(e("Punch", "LA", dmg, mod != 0 ? "%+d".formatted(mod) : (explicitZero ? DASH : "")));
+                entries.add(e("Punch", "LA", lDmg, mod != 0 ? "%+d".formatted(mod) : (explicitZero ? DASH : "")));
             }
 
-            if (!mek.hasClaw(Mek.LOC_RARM)) {
+            if (!mek.hasClaw(Mek.LOC_RIGHT_ARM)) {
                 explicitZero = false;
                 if (hasRHand) {
                     mod = 0;
-                } else if (mek.hasSystem(Mek.ACTUATOR_LOWER_ARM, Mek.LOC_RARM)) {
+                } else if (hasRLowerActuator) {
                     mod = 1;
                 } else {
                     mod = 2;
@@ -168,7 +160,7 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
                     mod--;
                     explicitZero = true;
                 }
-                entries.add(e("Punch", "RA", dmg, mod != 0 ? "%+d".formatted(mod) : (explicitZero ? DASH : "")));
+                entries.add(e("Punch", "RA", rDmg, mod != 0 ? "%+d".formatted(mod) : (explicitZero ? DASH : "")));
             }
         }
 
@@ -256,7 +248,8 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
     /**
      * @return true if this physical should only be shown when the "Extra physicals" option is enabled.
      */
-    public boolean isOptional() {
+    @Override
+    public boolean optional() {
         return optional;
     }
 
@@ -267,7 +260,7 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
 
     @Override
     public String getUniqueId() {
-        return String.valueOf(hashCode());
+        return name + "@" + location;
     }
 
     @Override
@@ -326,7 +319,7 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
     }
 
     @Override
-    public String getModField(int row) {
+    public String getModField(int row, boolean baseOnly) {
         if (row == 0) {
             return mod.replace("-", MINUS);
         }
@@ -416,7 +409,7 @@ public class IntrinsicPhysicalInventoryEntry implements InventoryEntry {
         }
 
         @Override
-        public String getModField(int row) {
+        public String getModField(int row, boolean baseOnly) {
             return "";
         }
 

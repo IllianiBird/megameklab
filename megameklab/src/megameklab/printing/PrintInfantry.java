@@ -38,15 +38,15 @@ import static megameklab.printing.InventoryEntry.DASH;
 import java.util.Enumeration;
 import java.util.StringJoiner;
 
-import megamek.common.AmmoType;
-import megamek.common.Entity;
-import megamek.common.EntityMovementMode;
-import megamek.common.EquipmentType;
-import megamek.common.Infantry;
-import megamek.common.Mounted;
-import megamek.common.WeaponType;
+import megamek.common.equipment.AmmoType;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.WeaponType;
 import megamek.common.options.IOption;
 import megamek.common.options.IOptionGroup;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.Infantry;
 import megamek.common.weapons.artillery.ArtilleryCannonWeapon;
 import megamek.common.weapons.artillery.ArtilleryWeapon;
 import megamek.common.weapons.infantry.InfantryWeapon;
@@ -127,9 +127,9 @@ public class PrintInfantry extends PrintEntity {
 
         setTextField(TRANSPORT_WT, String.format("%.1f tons", infantry.getWeight()));
 
-        String mode1 = null,
+        String mode1,
               mode2 = null,
-              mp1 = null,
+              mp1,
               mp2 = null;
         switch (infantry.getMovementMode()) {
             case INF_JUMP:
@@ -189,7 +189,7 @@ public class PrintInfantry extends PrintEntity {
 
         // Add name of beast for beast-mounted infantry
         if (infantry.getMount() != null) {
-            mode1 = String.format("%s [beast: %s]", mode1, infantry.getMount().getName());
+            mode1 = String.format("%s [beast: %s]", mode1, infantry.getMount().name());
         }
 
         setTextField(MP_1, mp1);
@@ -254,11 +254,11 @@ public class PrintInfantry extends PrintEntity {
             sj.add(String.format("+%dD6 damage vs. conventional infantry.", burst));
         }
         if (infantry.getMount() != null) {
-            if (infantry.getMount().getVehicleDamage() > 0) {
-                sj.add(String.format("+%d damage vs. vehicles and 'Meks", infantry.getMount().getVehicleDamage()));
+            if (infantry.getMount().vehicleDamage() > 0) {
+                sj.add(String.format("+%d damage vs. vehicles and 'Meks", infantry.getMount().vehicleDamage()));
             }
-            if (infantry.getMount().getSize().toHitMod != 0) {
-                sj.add(String.format("%d attacker to-hit", infantry.getMount().getSize().toHitMod));
+            if (infantry.getMount().size().toHitMod != 0) {
+                sj.add(String.format("%d attacker to-hit", infantry.getMount().size().toHitMod));
             }
         }
         if (rangeWeapon.hasFlag(WeaponType.F_INF_NONPENETRATING)) {
@@ -315,6 +315,19 @@ public class PrintInfantry extends PrintEntity {
             sj.add("Invisible to standard/light active probes.");
         }
 
+        StringJoiner enhancements = getEnhancements();
+        if (enhancements.length() > 0) {
+            sj.add("Cybernetically enhanced: " + enhancements);
+        }
+
+        if (sj.length() > 0) {
+            return sj.toString();
+        } else {
+            return "None";
+        }
+    }
+
+    private StringJoiner getEnhancements() {
         StringJoiner enhancements = new StringJoiner(", ");
         var spas = infantry.getCrew().getOptions();
         for (Enumeration<IOptionGroup> e = spas.getGroups(); e.hasMoreElements(); ) {
@@ -333,15 +346,7 @@ public class PrintInfantry extends PrintEntity {
                 }
             }
         }
-        if (enhancements.length() > 0) {
-            sj.add("Cybernetically enhanced: " + enhancements.toString());
-        }
-
-        if (sj.length() > 0) {
-            return sj.toString();
-        } else {
-            return "None";
-        }
+        return enhancements;
     }
 
     private boolean isFlameBased(WeaponType type) {

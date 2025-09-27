@@ -42,9 +42,33 @@ import java.util.stream.Collectors;
 import javax.swing.BorderFactory;
 import javax.swing.JPanel;
 
-import megamek.common.*;
-import megamek.common.ITechnology.TechRating;
+import megamek.common.SimpleTechLevel;
+import megamek.common.bays.CrewQuartersCargoBay;
+import megamek.common.bays.EjectionSeatCargoBay;
+import megamek.common.bays.FirstClassQuartersCargoBay;
+import megamek.common.bays.PillionSeatCargoBay;
+import megamek.common.bays.SecondClassQuartersCargoBay;
+import megamek.common.bays.StandardSeatCargoBay;
+import megamek.common.bays.SteerageQuartersCargoBay;
+import megamek.common.enums.Faction;
+import megamek.common.enums.TechRating;
+import megamek.common.equipment.Engine;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.EquipmentTypeLookup;
 import megamek.common.equipment.MiscMounted;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.Transporter;
+import megamek.common.equipment.enums.FuelType;
+import megamek.common.exceptions.LocationFullException;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.EntityWeightClass;
+import megamek.common.units.FixedWingSupport;
+import megamek.common.units.Tank;
+import megamek.common.units.UnitRole;
+import megamek.common.verifier.Ceil;
 import megamek.common.verifier.TestEntity;
 import megamek.common.verifier.TestSupportVehicle;
 import megamek.logging.MMLogger;
@@ -63,7 +87,7 @@ import megameklab.util.UnitUtil;
  * Structure tab for support vehicle construction
  */
 public class SVStructureTab extends ITab implements SVBuildListener {
-    private static final MMLogger logger = MMLogger.create(SVStructureTab.class);
+    private static final MMLogger LOGGER = MMLogger.create(SVStructureTab.class);
 
     private RefreshListener refresh = null;
     private JPanel masterPanel;
@@ -188,7 +212,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     /*
      * Used by MekHQ to set the tech faction for custom refits.
      */
-    public void setTechFaction(ITechnology.Faction techFaction) {
+    public void setTechFaction(Faction techFaction) {
         panBasicInfo.setTechFaction(techFaction);
     }
 
@@ -312,13 +336,13 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     @Override
     public void jumpChanged(int jumpMP, EquipmentType jumpJet) {
         if (null != jumpJet) {
-            UnitUtil.removeAllMiscMounteds(getSV(), MiscType.F_JUMP_JET);
+            UnitUtil.removeAllMiscMounted(getSV(), MiscType.F_JUMP_JET);
             getSV().setOriginalJumpMP(0);
             for (int i = 0; i < jumpMP; i++) {
                 try {
                     getSV().addEquipment(jumpJet, Tank.LOC_BODY);
                 } catch (LocationFullException e) {
-                    logger.error("", e);
+                    LOGGER.error("", e);
                 }
             }
             panSummary.refresh();
@@ -340,7 +364,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     @Override
     public void tonnageChanged(double tonnage) {
         boolean wasLarge = getEntity().getWeightClass() == EntityWeightClass.WEIGHT_LARGE_SUPPORT;
-        getEntity().setWeight(TestEntity.ceil(tonnage, tonnage < 5 ? TestEntity.Ceil.KILO : TestEntity.Ceil.HALFTON));
+        getEntity().setWeight(TestEntity.ceil(tonnage, tonnage < 5 ? Ceil.KILO : Ceil.HALF_TON));
         if (!getEntity().isAero() && !getEntity().getMovementMode().equals(EntityMovementMode.VTOL)) {
             if ((getEntity().getWeightClass() == EntityWeightClass.WEIGHT_LARGE_SUPPORT) != wasLarge) {
                 toggleLargeSupport();
@@ -472,12 +496,12 @@ public class SVStructureTab extends ITab implements SVBuildListener {
                 getSV().addEquipment(mod, getSV().isAero() ? FixedWingSupport.LOC_BODY : Tank.LOC_BODY);
             } catch (LocationFullException e) {
                 // This should not be possible since chassis mods don't occupy slots
-                logger.error("LocationFullException when adding chassis mod " + mod.getName());
+                LOGGER.error("LocationFullException when adding chassis mod {}", mod.getName());
             }
         } else if (!installed && (null != current)) {
             getSV().getMisc().remove(current);
             getSV().getEquipment().remove(current);
-            UnitUtil.removeCriticals(getSV(), current);
+            UnitUtil.removeCriticalSlots(getSV(), current);
             UnitUtil.changeMountStatus(getSV(), current, Entity.LOC_NONE, Entity.LOC_NONE, false);
         }
         if (mod.equals(TestSupportVehicle.ChassisModification.OMNI.equipment)) {
@@ -562,16 +586,19 @@ public class SVStructureTab extends ITab implements SVBuildListener {
                 getSV().addEquipment(EquipmentType.get(EquipmentTypeLookup.SPONSON_TURRET), Tank.LOC_RIGHT);
             } catch (LocationFullException e) {
                 // This should not be possible since sponson turrets mods don't occupy slots
-                logger.error("LocationFullException when adding sponson turret");
+                LOGGER.error("LocationFullException when adding sponson turret");
             }
         } else if (!installed) {
             for (Mounted<?> m : getEntity().getEquipment()) {
                 m.setSponsonTurretMounted(false);
             }
             for (Mounted<?> sponson : current) {
-                getSV().getMisc().remove(sponson);
+                if (sponson instanceof MiscMounted) {
+                    getSV().getMisc().remove(sponson);
+                }
+
                 getSV().getEquipment().remove(sponson);
-                UnitUtil.removeCriticals(getSV(), sponson);
+                UnitUtil.removeCriticalSlots(getSV(), sponson);
                 UnitUtil.changeMountStatus(getSV(), sponson, Entity.LOC_NONE, Entity.LOC_NONE, false);
             }
         }
@@ -595,7 +622,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
                 getSV().addEquipment(EquipmentType.get(EquipmentTypeLookup.PINTLE_TURRET), loc);
             } catch (LocationFullException e) {
                 // This should not be possible since sponson turrets mods don't occupy slots
-                logger.error("LocationFullException when adding pintle turret");
+                LOGGER.error("LocationFullException when adding pintle turret");
             }
         } else if (!addPintle && installedPintle.isPresent()) {
             for (Mounted<?> m : getEntity().getEquipment()) {
@@ -606,7 +633,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
             MiscMounted pintle = installedPintle.get();
             getSV().getMisc().remove(pintle);
             getSV().getEquipment().remove(pintle);
-            UnitUtil.removeCriticals(getSV(), pintle);
+            UnitUtil.removeCriticalSlots(getSV(), pintle);
             UnitUtil.changeMountStatus(getSV(), pintle, Entity.LOC_NONE, Entity.LOC_NONE, false);
         }
         resetSponsonPintleWeight();
@@ -655,19 +682,19 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     @Override
     public void fireConChanged(int index) {
         final Mounted<?> current = getSV().getMisc().stream()
-              .filter(m -> m.getType().hasFlag(MiscType.F_BASIC_FIRECONTROL)
-                    || m.getType().hasFlag(MiscType.F_ADVANCED_FIRECONTROL))
+              .filter(m -> m.getType().hasFlag(MiscType.F_BASIC_FIRE_CONTROL)
+                    || m.getType().hasFlag(MiscType.F_ADVANCED_FIRE_CONTROL))
               .findFirst().orElse(null);
         if (null != current) {
             getSV().getMisc().remove(current);
             getSV().getEquipment().remove(current);
-            UnitUtil.removeCriticals(getSV(), current);
+            UnitUtil.removeCriticalSlots(getSV(), current);
             UnitUtil.changeMountStatus(getSV(), current, Entity.LOC_NONE, Entity.LOC_NONE, false);
         }
         EquipmentType eq = null;
-        if (index == SVBuildListener.FIRECON_BASIC) {
+        if (index == SVBuildListener.FIRE_CONTROL_BASIC) {
             eq = EquipmentType.get("Basic Fire Control");
-        } else if (index == SVBuildListener.FIRECON_ADVANCED) {
+        } else if (index == SVBuildListener.FIRE_CONTROL_ADVANCED) {
             eq = EquipmentType.get("Advanced Fire Control");
         }
         if (null != eq) {
@@ -675,7 +702,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
                 getSV().addEquipment(eq, getSV().isAero() ? FixedWingSupport.LOC_BODY : Tank.LOC_BODY);
             } catch (LocationFullException e) {
                 // This should not be possible since fire control doesn't occupy slots
-                logger.error("LocationFullException when adding fire control " + eq.getName());
+                LOGGER.error("LocationFullException when adding fire control {}", eq.getName());
             }
         }
         panChassis.setFromEntity(getSV());
@@ -704,7 +731,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
         // Clear out any existing seating.
         final List<Transporter> current = getSV().getTransports().stream()
               .filter(t -> t instanceof StandardSeatCargoBay)
-              .collect(Collectors.toList());
+              .toList();
         for (Transporter t : current) {
             getSV().removeTransporter(t);
         }
@@ -744,7 +771,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
                     || (t instanceof SecondClassQuartersCargoBay)
                     || (t instanceof CrewQuartersCargoBay)
                     || (t instanceof SteerageQuartersCargoBay))
-              .collect(Collectors.toList());
+              .toList();
         for (Transporter t : current) {
             getSV().removeTransporter(t);
         }
@@ -780,7 +807,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     }
 
     private void removeTurret(int loc) {
-        for (int slot = 0; slot < getTank().getNumberOfCriticals(loc); slot++) {
+        for (int slot = 0; slot < getTank().getNumberOfCriticalSlots(loc); slot++) {
             getTank().setCritical(loc, slot, null);
         }
         for (Mounted<?> mount : getTank().getEquipment()) {
@@ -803,7 +830,7 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     @Override
     public void fuelTonnageChanged(double tonnage) {
         double fuelTons = TestEntity.round(tonnage,
-              TestEntity.usesKgStandard(getSV()) ? TestEntity.Ceil.KILO : TestEntity.Ceil.HALFTON);
+              TestEntity.usesKgStandard(getSV()) ? Ceil.KILO : Ceil.HALF_TON);
         if (getSV().isAero()) {
             getAero().setFuelTonnage(fuelTons);
         } else {
@@ -822,12 +849,12 @@ public class SVStructureTab extends ITab implements SVBuildListener {
         } else {
             double tonnage = capacity * getTank().fuelTonnagePer100km() / 100.0;
             if (TestEntity.usesKgStandard(getEntity())) {
-                tonnage = TestEntity.round(tonnage, TestEntity.Ceil.KILO);
+                tonnage = TestEntity.round(tonnage, Ceil.KILO);
             } else if (tonnage > getTank().getFuelTonnage()) {
                 // Round in the same direction as the change.
-                tonnage = TestEntity.ceil(tonnage, TestEntity.Ceil.HALFTON);
+                tonnage = TestEntity.ceil(tonnage, Ceil.HALF_TON);
             } else {
-                tonnage = TestEntity.floor(tonnage, TestEntity.Ceil.HALFTON);
+                tonnage = TestEntity.floor(tonnage, Ceil.HALF_TON);
             }
             getTank().setFuelTonnage(tonnage);
         }

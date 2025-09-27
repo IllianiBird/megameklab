@@ -42,11 +42,11 @@ import javax.swing.JLabel;
 import javax.swing.ListSelectionModel;
 import javax.swing.border.TitledBorder;
 
-import megamek.common.BattleArmor;
 import megamek.common.CriticalSlot;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
-import megamek.common.WeaponType;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.WeaponType;
 import megamek.common.verifier.EntityVerifier;
 import megamek.common.verifier.TestBattleArmor;
 import megamek.common.weapons.infantry.InfantryWeapon;
@@ -92,15 +92,15 @@ public class BACriticalView extends IView {
         Box rightPanel = Box.createVerticalBox();
 
         mainPanel.setBorder(BorderFactory.createTitledBorder(
-              BorderFactory.createMatteBorder(2, 0, 0, 0, CritCellUtil.CRITCELL_BORDER_COLOR),
+              BorderFactory.createMatteBorder(2, 0, 0, 0, CritCellUtil.CRITICAL_CELL_BORDER_COLOR),
               " Trooper " + trooper + " ",
               TitledBorder.TOP,
               TitledBorder.DEFAULT_POSITION));
 
-        leftArmPanel.setBorder(CritCellUtil.locationBorder(BattleArmor.MOUNT_LOC_NAMES[BattleArmor.MOUNT_LOC_LARM]));
+        leftArmPanel.setBorder(CritCellUtil.locationBorder(BattleArmor.MOUNT_LOC_NAMES[BattleArmor.MOUNT_LOC_LEFT_ARM]));
         bodyPanel.setBorder(CritCellUtil.locationBorder(BattleArmor.MOUNT_LOC_NAMES[BattleArmor.MOUNT_LOC_BODY]));
         turretPanel.setBorder(CritCellUtil.locationBorder(BattleArmor.MOUNT_LOC_NAMES[BattleArmor.MOUNT_LOC_TURRET]));
-        rightArmPanel.setBorder(CritCellUtil.locationBorder(BattleArmor.MOUNT_LOC_NAMES[BattleArmor.MOUNT_LOC_RARM]));
+        rightArmPanel.setBorder(CritCellUtil.locationBorder(BattleArmor.MOUNT_LOC_NAMES[BattleArmor.MOUNT_LOC_RIGHT_ARM]));
         weightLabel.setAlignmentX(JLabel.CENTER_ALIGNMENT);
 
         leftPanel.add(leftArmPanel);
@@ -151,17 +151,17 @@ public class BACriticalView extends IView {
         synchronized (getBattleArmor()) {
             for (int location = 0; location < critSuit.locations(); location++) {
                 Vector<String> critNames = new Vector<>(1, 1);
-                for (int slot = 0; slot < critSuit.getNumCriticals(location); slot++) {
+                for (int slot = 0; slot < critSuit.getNumCriticalSlots(location); slot++) {
                     CriticalSlot cs = critSuit.getCritical(location, slot);
                     if (cs == null) {
                         if (showEmpty) {
-                            critNames.add(CritCellUtil.EMPTY_CRITCELL_TEXT);
+                            critNames.add(CritCellUtil.EMPTY_CRITICAL_CELL_TEXT);
                         }
                     } else if (cs.getType() == CriticalSlot.TYPE_EQUIPMENT) {
                         Mounted<?> m = cs.getMount();
                         if (m == null) {
                             if (showEmpty) {
-                                critNames.add(CritCellUtil.EMPTY_CRITCELL_TEXT);
+                                critNames.add(CritCellUtil.EMPTY_CRITICAL_CELL_TEXT);
                             }
                         } else {
                             critNames.add(m.getName() + ":" + slot + ":" + getBattleArmor().getEquipmentNum(m));
@@ -169,19 +169,12 @@ public class BACriticalView extends IView {
                     }
                 }
 
-                BAASBMDropTargetCriticalList<String> criticalSlotList = new BAASBMDropTargetCriticalList<>(
-                      critNames, eSource, refresh, showEmpty, this);
-                criticalSlotList.setVisibleRowCount(critNames.size());
-                criticalSlotList.setAlignmentX(JComponent.CENTER_ALIGNMENT);
-                criticalSlotList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-                criticalSlotList.setName(location + ":" + trooper);
-                criticalSlotList.setBorder(BorderFactory.createLineBorder(CritCellUtil.CRITCELL_BORDER_COLOR));
-                criticalSlotList.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+                BAASBMDropTargetCriticalList<String> criticalSlotList = getCriticalSlotList(critNames, location);
                 switch (location) {
-                    case BattleArmor.MOUNT_LOC_LARM:
+                    case BattleArmor.MOUNT_LOC_LEFT_ARM:
                         leftArmPanel.add(criticalSlotList);
                         break;
-                    case BattleArmor.MOUNT_LOC_RARM:
+                    case BattleArmor.MOUNT_LOC_RIGHT_ARM:
                         rightArmPanel.add(criticalSlotList);
                         break;
                     case BattleArmor.MOUNT_LOC_BODY:
@@ -208,11 +201,11 @@ public class BACriticalView extends IView {
                 }
             }
 
-            leftArmPanel.add(makeLabel(amTxt[BattleArmor.MOUNT_LOC_LARM]));
-            leftArmPanel.add(makeLabel(apTxt[BattleArmor.MOUNT_LOC_LARM]));
+            leftArmPanel.add(makeLabel(amTxt[BattleArmor.MOUNT_LOC_LEFT_ARM]));
+            leftArmPanel.add(makeLabel(apTxt[BattleArmor.MOUNT_LOC_LEFT_ARM]));
 
-            rightArmPanel.add(makeLabel(amTxt[BattleArmor.MOUNT_LOC_RARM]));
-            rightArmPanel.add(makeLabel(apTxt[BattleArmor.MOUNT_LOC_RARM]));
+            rightArmPanel.add(makeLabel(amTxt[BattleArmor.MOUNT_LOC_RIGHT_ARM]));
+            rightArmPanel.add(makeLabel(apTxt[BattleArmor.MOUNT_LOC_RIGHT_ARM]));
 
             bodyPanel.add(makeLabel(amTxt[BattleArmor.MOUNT_LOC_BODY]));
             bodyPanel.add(makeLabel(apTxt[BattleArmor.MOUNT_LOC_BODY]));
@@ -237,6 +230,19 @@ public class BACriticalView extends IView {
 
             validate();
         }
+    }
+
+    private BAASBMDropTargetCriticalList<String> getCriticalSlotList(Vector<String> critNames,
+          int location) {
+        BAASBMDropTargetCriticalList<String> criticalSlotList = new BAASBMDropTargetCriticalList<>(
+              critNames, eSource, refresh, showEmpty, this);
+        criticalSlotList.setVisibleRowCount(critNames.size());
+        criticalSlotList.setAlignmentX(JComponent.CENTER_ALIGNMENT);
+        criticalSlotList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        criticalSlotList.setName(location + ":" + trooper);
+        criticalSlotList.setBorder(BorderFactory.createLineBorder(CritCellUtil.CRITICAL_CELL_BORDER_COLOR));
+        criticalSlotList.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
+        return criticalSlotList;
     }
 
     private JLabel makeLabel(String text) {

@@ -44,10 +44,10 @@ import javax.swing.ListSelectionModel;
 
 import megamek.client.ui.util.UIUtil;
 import megamek.common.CriticalSlot;
-import megamek.common.Mounted;
-import megamek.common.SuperHeavyTank;
-import megamek.common.Tank;
-import megamek.common.VTOL;
+import megamek.common.equipment.Mounted;
+import megamek.common.units.SuperHeavyTank;
+import megamek.common.units.Tank;
+import megamek.common.units.VTOL;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.CritCellUtil;
 import megameklab.ui.util.DropTargetCriticalList;
@@ -88,10 +88,10 @@ public final class CVCriticalView extends IView {
           Tank.LOC_TURRET_2, dualTurretPanel);
 
     private final Map<Integer, JComponent> superHvyLocations = Map.of(Tank.LOC_FRONT, frontPanel,
-          SuperHeavyTank.LOC_FRONTLEFT, leftPanel, SuperHeavyTank.LOC_FRONTRIGHT, rightPanel,
+          SuperHeavyTank.LOC_FRONT_LEFT, leftPanel, SuperHeavyTank.LOC_FRONT_RIGHT, rightPanel,
           Tank.LOC_BODY, bodyPanel, SuperHeavyTank.LOC_REAR, rearPanel, SuperHeavyTank.LOC_TURRET, turretPanel,
           SuperHeavyTank.LOC_TURRET_2, dualTurretPanel,
-          SuperHeavyTank.LOC_REARLEFT, rearLeftPanel, SuperHeavyTank.LOC_REARRIGHT, rearRightPanel);
+          SuperHeavyTank.LOC_REAR_LEFT, rearLeftPanel, SuperHeavyTank.LOC_REAR_RIGHT, rearRightPanel);
 
     public CVCriticalView(EntitySource eSource, RefreshListener refresh) {
         super(eSource);
@@ -174,7 +174,7 @@ public final class CVCriticalView extends IView {
             for (int location = 0; location < getTank().locations(); location++) {
                 Vector<String> critNames = new Vector<>(1, 1);
 
-                for (int slot = 0; slot < getTank().getNumberOfCriticals(location); slot++) {
+                for (int slot = 0; slot < getTank().getNumberOfCriticalSlots(location); slot++) {
                     CriticalSlot cs = getTank().getCritical(location, slot);
                     if (cs == null) {
                         continue;
@@ -203,15 +203,9 @@ public final class CVCriticalView extends IView {
                 }
 
                 if (critNames.isEmpty()) {
-                    critNames.add(CritCellUtil.EMPTY_CRITCELL_TEXT);
+                    critNames.add(CritCellUtil.EMPTY_CRITICAL_CELL_TEXT);
                 }
-                DropTargetCriticalList<String> criticalSlotList =
-                      new DropTargetCriticalList<>(critNames, eSource, refresh, true);
-                criticalSlotList.setVisibleRowCount(critNames.size());
-                criticalSlotList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-                criticalSlotList.setName(location + "");
-                criticalSlotList.setBorder(BorderFactory.createLineBorder(Color.BLACK));
-                criticalSlotList.setPrototypeCellValue(CritCellUtil.CRITCELL_WIDTH_STRING);
+                DropTargetCriticalList<String> criticalSlotList = getCriticalSlotList(critNames, location);
                 if (isVTOL()) {
                     if (vtolLocations.containsKey(location)) {
                         vtolLocations.get(location).add(criticalSlotList);
@@ -229,5 +223,16 @@ public final class CVCriticalView extends IView {
 
             validate();
         }
+    }
+
+    private DropTargetCriticalList<String> getCriticalSlotList(Vector<String> critNames, int location) {
+        DropTargetCriticalList<String> criticalSlotList =
+              new DropTargetCriticalList<>(critNames, eSource, refresh, true);
+        criticalSlotList.setVisibleRowCount(critNames.size());
+        criticalSlotList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        criticalSlotList.setName(location + "");
+        criticalSlotList.setBorder(BorderFactory.createLineBorder(Color.BLACK));
+        criticalSlotList.setPrototypeCellValue(CritCellUtil.CRITICAL_CELL_WIDTH_STRING);
+        return criticalSlotList;
     }
 }

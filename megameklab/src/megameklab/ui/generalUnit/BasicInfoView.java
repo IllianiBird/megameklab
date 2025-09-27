@@ -55,15 +55,16 @@ import javax.swing.JTextField;
 
 import megamek.MMConstants;
 import megamek.client.ui.comboBoxes.MMComboBox;
-import megamek.common.Entity;
-import megamek.common.ITechManager;
-import megamek.common.ITechnology;
-import megamek.common.ITechnology.Faction;
-import megamek.common.ITechnology.FactionAffiliation;
-import megamek.common.Mek;
 import megamek.common.SimpleTechLevel;
 import megamek.common.TechAdvancement;
-import megamek.common.UnitRole;
+import megamek.common.enums.Faction;
+import megamek.common.enums.FactionAffiliation;
+import megamek.common.enums.TechBase;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.interfaces.ITechnology;
+import megamek.common.units.Entity;
+import megamek.common.units.Mek;
+import megamek.common.units.UnitRole;
 import megamek.logging.MMLogger;
 import megameklab.ui.listeners.BuildListener;
 import megameklab.ui.util.CustomComboBox;
@@ -78,7 +79,7 @@ import megameklab.util.CConfig;
  * @author Neoancient
  */
 public class BasicInfoView extends BuildView implements ITechManager, ActionListener, FocusListener {
-    private static final MMLogger logger = MMLogger.create(BasicInfoView.class);
+    private static final MMLogger LOGGER = MMLogger.create(BasicInfoView.class);
 
     // region Variable Declarations
     private static final TechAdvancement TA_MIXED_TECH = Entity.getMixedTechAdvancement();
@@ -95,7 +96,7 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
     private TechAdvancement baseTA;
 
     private final ResourceBundle resourceMap = ResourceBundle.getBundle("megameklab.resources.Views");
-    private final JTextField txtChassis = new JTextField(WidthControlComponent.TEXTFIELD_COLUMNS);
+    private final JTextField txtChassis = new JTextField(WidthControlComponent.TEXT_FIELD_COLUMNS);
     private final JTextField txtClanName = new JTextField();
     private final JLabel lblClanName = createLabel(resourceMap, "lblClanName", "BasicInfoView.txtClanName.text",
           "BasicInfoView.txtClanName.tooltip");
@@ -344,15 +345,15 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
     }
 
     @Override
-    public ITechnology.Faction getTechFaction() {
+    public Faction getTechFaction() {
         if (!CConfig.getBooleanParam(CConfig.TECH_SHOW_FACTION)) {
-            return ITechnology.Faction.NONE;
+            return Faction.NONE;
         }
         Faction selectedFaction = (Faction) cbFaction.getSelectedItem();
-        return (selectedFaction == null) ? ITechnology.Faction.NONE : selectedFaction;
+        return (selectedFaction == null) ? Faction.NONE : selectedFaction;
     }
 
-    public void setTechFaction(ITechnology.Faction techFaction) {
+    public void setTechFaction(Faction techFaction) {
         cbFaction.setSelectedItem(techFaction);
     }
 
@@ -445,9 +446,9 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
         // are formed, and not built by an IS faction before the Clan invasion.
         final boolean clanFaction = getTechFaction().getAffiliation().equals(FactionAffiliation.CLAN)
               || (getTechFaction() == Faction.NONE);
-        final boolean sphereAvailable = baseTA.getTechBase() != ITechnology.TechBase.CLAN;
+        final boolean sphereAvailable = baseTA.getTechBase() != TechBase.CLAN;
         final boolean clanAvailable = (getTechIntroYear() >= CLAN_START)
-              && (baseTA.getTechBase() != ITechnology.TechBase.IS)
+              && (baseTA.getTechBase() != TechBase.IS)
               && (clanFaction || (getTechIntroYear() >= IS_MIXED_START));
         final boolean mixedTechAvailable = (getTechIntroYear() >= IS_MIXED_START)
               || ((getTechIntroYear() >= CLAN_MIXED_START) && clanFaction);
@@ -498,7 +499,7 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
             }
         }
 
-        if (!useClanTechBase() && (SimpleTechLevel.INTRO.ordinal() >= baseLevel.ordinal())) {
+        if (!useClanTechBase() && (SimpleTechLevel.INTRO.ordinal() == baseLevel.ordinal())) {
             cbTechLevel.addItem(SimpleTechLevel.INTRO.toString());
         }
 
@@ -564,7 +565,7 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
                 prevYear = year;
             } catch (Exception ex) {
                 // If text is not a legal integer value, reset to the previous value
-                logger.error("", ex);
+                LOGGER.error("", ex);
             } finally {
                 setYear(prevYear);
             }
@@ -597,7 +598,7 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
 
     @Override
     public boolean unofficialNoYear() {
-        return CConfig.getBooleanParam(CConfig.TECH_UNOFFICAL_NO_YEAR);
+        return CConfig.getBooleanParam(CConfig.TECH_UNOFFICIAL_NO_YEAR);
     }
 
     @Override
@@ -630,7 +631,7 @@ public class BasicInfoView extends BuildView implements ITechManager, ActionList
                 Desktop.getDesktop().browse(URI.create(MMConstants.MUL_URL_PREFIX + txtMulId.getIntVal()));
             }
         } catch (Exception ex) {
-            logger.error("", ex);
+            LOGGER.error("", ex);
             JOptionPane.showMessageDialog(this, ex.getMessage(), "ERROR", JOptionPane.ERROR_MESSAGE);
         }
     }

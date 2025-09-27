@@ -32,7 +32,7 @@
  */
 package megameklab.ui.listeners;
 
-import megamek.common.EntityMovementMode;
+import megamek.common.units.EntityMovementMode;
 
 /**
  * Listener for views used by conventional infantry.
@@ -49,7 +49,7 @@ public interface InfantryBuildListener extends BuildListener {
     /**
      * @param motiveType The selected motive type
      * @param alt        If motiveType is VTOL or INF_UMU, alt is true for microlite and motorized scuba respectively,
-     *                   false for microcopter and foot scuba. It has no meaning for other motive types.
+     *                   false for MicroCopter and foot scuba. It has no meaning for other motive types.
      */
     void motiveTypeChanged(EntityMovementMode motiveType, boolean alt);
 

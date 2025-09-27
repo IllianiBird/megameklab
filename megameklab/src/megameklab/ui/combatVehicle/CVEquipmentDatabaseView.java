@@ -37,13 +37,13 @@ import static megameklab.ui.util.EquipmentTableModel.*;
 import java.util.Collection;
 import java.util.List;
 
-import megamek.common.Entity;
-import megamek.common.EquipmentType;
-import megamek.common.LocationFullException;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
-import megamek.common.Tank;
-import megamek.common.VTOL;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.exceptions.LocationFullException;
+import megamek.common.units.Entity;
+import megamek.common.units.Tank;
+import megamek.common.units.VTOL;
 import megamek.common.verifier.TestTank;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.AbstractEquipmentDatabaseView;
@@ -55,10 +55,11 @@ import megameklab.util.UnitUtil;
  */
 class CVEquipmentDatabaseView extends AbstractEquipmentDatabaseView {
 
-    private final List<Integer> fluffColumns = List.of(COL_NAME, COL_TECH, COL_TLEVEL, COL_TRATING, COL_DPROTOTYPE,
-          COL_DPRODUCTION, COL_DCOMMON, COL_DEXTINCT, COL_DREINTRO, COL_COST);
+    private final List<Integer> fluffColumns = List.of(COL_NAME, COL_TECH, COL_TECH_LEVEL,
+          COL_TECH_RATING, COL_DATE_PROTOTYPE,
+          COL_DATE_PRODUCTION, COL_DATE_COMMON, COL_DATE_EXTINCT, COL_DATE_REINTRODUCED, COL_COST);
 
-    private final List<Integer> statsColumns = List.of(COL_NAME, COL_DAMAGE, COL_HEAT, COL_MRANGE, COL_RANGE,
+    private final List<Integer> statsColumns = List.of(COL_NAME, COL_DAMAGE, COL_HEAT, COL_MEDIUM_RANGE, COL_RANGE,
           COL_SHOTS, COL_TECH, COL_BV, COL_TON, COL_CRIT, COL_REF);
 
     CVEquipmentDatabaseView(EntitySource eSource) {
@@ -69,7 +70,7 @@ class CVEquipmentDatabaseView extends AbstractEquipmentDatabaseView {
     protected void addEquipment(EquipmentType equip, int count) {
         Mounted<?> mount;
         boolean isMisc = equip instanceof MiscType;
-        if (isMisc && equip.hasFlag(MiscType.F_TARGCOMP)) {
+        if (isMisc && equip.hasFlag(MiscType.F_TARGETING_COMPUTER)) {
             if (!UnitUtil.hasTargComp(getTank())) {
                 UnitUtil.updateTC(getTank(), equip);
             }

@@ -32,7 +32,7 @@
  */
 package megameklab.testing.util;
 
-import megamek.common.EquipmentType;
+import megamek.common.equipment.EquipmentType;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -40,7 +40,7 @@ public class InitializeTypes implements BeforeAllCallback {
     private static boolean initialized = false;
 
     @Override
-    public void beforeAll(ExtensionContext extensionContext) throws Exception {
+    public void beforeAll(ExtensionContext extensionContext) {
         if (!initialized) {
             initialized = true;
             EquipmentType.initializeTypes();

@@ -50,14 +50,14 @@ import megamek.client.ui.dialogs.abstractDialogs.BVDisplayDialog;
 import megamek.client.ui.dialogs.abstractDialogs.CostDisplayDialog;
 import megamek.client.ui.dialogs.abstractDialogs.WeightDisplayDialog;
 import megamek.client.ui.util.UIUtil;
-import megamek.common.Aero;
-import megamek.common.AmmoType;
-import megamek.common.BattleArmor;
-import megamek.common.Engine;
-import megamek.common.Mek;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
-import megamek.common.WeaponType;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.equipment.AmmoType;
+import megamek.common.equipment.Engine;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.WeaponType;
+import megamek.common.units.Aero;
+import megamek.common.units.Mek;
 import megamek.common.verifier.TestEntity;
 import megamek.utilities.DebugEntity;
 import megameklab.ui.ForceBuildUI;
@@ -91,6 +91,13 @@ public class StatusBar extends ITab {
         formatter = new DecimalFormat();
 
         JButton btnValidate = new JButton("Validate Unit");
+        ActionListener validationListener = e -> {
+            if ((e.getModifiers() & ActionEvent.CTRL_MASK) != 0) {
+                DebugEntity.copyEquipmentState(getEntity());
+            } else {
+                UnitUtil.showValidation(getEntity(), getParentFrame());
+            }
+        };
         btnValidate.addActionListener(validationListener);
 
         JButton btnRefresh = new JButton("Refresh UI");
@@ -99,9 +106,7 @@ public class StatusBar extends ITab {
 
         JButton btnAddToForce = new JButton("Add to Force");
         btnAddToForce.setToolTipText("Add this unit to the current force.");
-        btnAddToForce.addActionListener(evt -> {
-            ForceBuildUI.showAndAddEntity(getEntity());
-        });
+        btnAddToForce.addActionListener(evt -> ForceBuildUI.showAndAddEntity(getEntity()));
 
         invalid.setForeground(GUIPreferences.getInstance().getWarningColor());
         invalid.setVisible(false);
@@ -211,18 +216,10 @@ public class StatusBar extends ITab {
         refresh = refreshListener;
     }
 
-    private final ActionListener validationListener = e -> {
-        if ((e.getModifiers() & ActionEvent.CTRL_MASK) != 0) {
-            DebugEntity.copyEquipmentState(getEntity());
-        } else {
-            UnitUtil.showValidation(getEntity(), getParentFrame());
-        }
-    };
-
     /**
-     * Returns an estimated value of the total heat generation for Meks and Aeros (0 for other types). This method is
-     * very specific to this use and cannot be generalized. It shouldn't be used elsewhere. It is here in StatusBar to
-     * avoid duplication in BMStatusBar and ASStatusBar.
+     * Returns an estimated value of the total heat generation for Meks and Aerospace (0 for other types). This method
+     * is very specific to this use and cannot be generalized. It shouldn't be used elsewhere. It is here in StatusBar
+     * to avoid duplication in BMStatusBar and ASStatusBar.
      *
      * @return An estimated value of the total heat generation.
      */
@@ -258,7 +255,7 @@ public class StatusBar extends ITab {
             }
 
             if ((weaponType.getAmmoType() == AmmoType.AmmoTypeEnum.ROCKET_LAUNCHER)
-                  || weaponType.hasFlag(WeaponType.F_ONESHOT)) {
+                  || weaponType.hasFlag(WeaponType.F_ONE_SHOT)) {
                 weaponHeat *= 0.25;
             }
 

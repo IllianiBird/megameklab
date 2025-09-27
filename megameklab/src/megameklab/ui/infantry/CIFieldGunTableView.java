@@ -32,11 +32,11 @@
  */
 package megameklab.ui.infantry;
 
-import static megamek.common.AmmoType.AmmoTypeEnum.CRUISE_MISSILE;
-import static megamek.common.AmmoType.AmmoTypeEnum.GAUSS_HEAVY;
-import static megamek.common.AmmoType.AmmoTypeEnum.HAG;
-import static megamek.common.AmmoType.AmmoTypeEnum.IGAUSS_HEAVY;
-import static megamek.common.AmmoType.AmmoTypeEnum.MAGSHOT;
+import static megamek.common.equipment.AmmoType.AmmoTypeEnum.CRUISE_MISSILE;
+import static megamek.common.equipment.AmmoType.AmmoTypeEnum.GAUSS_HEAVY;
+import static megamek.common.equipment.AmmoType.AmmoTypeEnum.HAG;
+import static megamek.common.equipment.AmmoType.AmmoTypeEnum.IGAUSS_HEAVY;
+import static megamek.common.equipment.AmmoType.AmmoTypeEnum.MAGSHOT;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -56,17 +56,17 @@ import javax.swing.table.TableColumn;
 import javax.swing.table.TableRowSorter;
 
 import megamek.client.ui.models.XTableColumnModel;
-import megamek.common.EquipmentType;
-import megamek.common.ITechManager;
-import megamek.common.WeaponType;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.WeaponType;
+import megamek.common.interfaces.ITechManager;
 import megamek.common.verifier.TestInfantry;
 import megamek.common.weapons.artillery.ArtilleryCannonWeapon;
 import megamek.common.weapons.artillery.ArtilleryWeapon;
-import megamek.common.weapons.autocannons.ACWeapon;
-import megamek.common.weapons.autocannons.LBXACWeapon;
-import megamek.common.weapons.autocannons.RifleWeapon;
-import megamek.common.weapons.autocannons.UACWeapon;
-import megamek.common.weapons.gaussrifles.GaussWeapon;
+import megamek.common.weapons.autoCannons.ACWeapon;
+import megamek.common.weapons.autoCannons.LBXACWeapon;
+import megamek.common.weapons.autoCannons.RifleWeapon;
+import megamek.common.weapons.autoCannons.UACWeapon;
+import megamek.common.weapons.gaussRifles.GaussWeapon;
 import megameklab.ui.EntitySource;
 import megameklab.ui.util.EquipmentTableModel;
 import megameklab.ui.util.IView;
@@ -94,14 +94,13 @@ public class CIFieldGunTableView extends IView implements ActionListener {
     private final JComboBox<String> choiceType = new JComboBox<>();
     private final JTextField txtFilter = new JTextField(12);
 
-    private final JRadioButton rbtnStats = new JRadioButton("Stats");
-    private final JRadioButton rbtnFluff = new JRadioButton("Fluff");
+    private final JRadioButton radioButtonStats = new JRadioButton("Stats");
+    private final JRadioButton radioButtonFluff = new JRadioButton("Fluff");
 
     private final TableRowSorter<EquipmentTableModel> equipmentSorter;
 
     private final EquipmentTableModel masterEquipmentList;
     private final JTable masterEquipmentTable = new JTable();
-    private final JScrollPane masterEquipmentScroll = new JScrollPane();
 
     public static String getTypeName(int type) {
         return switch (type) {
@@ -148,6 +147,7 @@ public class CIFieldGunTableView extends IView implements ActionListener {
             btnSetGun.setEnabled((null != etype) && eSource.getTechManager().isLegal(etype));
         });
         masterEquipmentTable.setDoubleBuffered(true);
+        JScrollPane masterEquipmentScroll = new JScrollPane();
         masterEquipmentScroll.setViewportView(masterEquipmentTable);
         masterEquipmentTable.getSelectionModel().addListSelectionListener(evt -> {
             int view = masterEquipmentTable.getSelectedRow();
@@ -213,17 +213,17 @@ public class CIFieldGunTableView extends IView implements ActionListener {
             }
         });
 
-        ButtonGroup bgroupView = new ButtonGroup();
-        bgroupView.add(rbtnStats);
-        bgroupView.add(rbtnFluff);
+        ButtonGroup buttonGroupView = new ButtonGroup();
+        buttonGroupView.add(radioButtonStats);
+        buttonGroupView.add(radioButtonFluff);
 
-        rbtnStats.setSelected(true);
-        rbtnStats.addActionListener(evt -> setEquipmentView());
-        rbtnFluff.addActionListener(evt -> setEquipmentView());
+        radioButtonStats.setSelected(true);
+        radioButtonStats.addActionListener(evt -> setEquipmentView());
+        radioButtonFluff.addActionListener(evt -> setEquipmentView());
         chkShowAll.addActionListener(evt -> filterEquipment());
         JPanel viewPanel = new JPanel(new GridLayout(0, 3));
-        viewPanel.add(rbtnStats);
-        viewPanel.add(rbtnFluff);
+        viewPanel.add(radioButtonStats);
+        viewPanel.add(radioButtonFluff);
         viewPanel.add(chkShowAll);
         setEquipmentView();
 
@@ -347,23 +347,25 @@ public class CIFieldGunTableView extends IView implements ActionListener {
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DIVISOR), false);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_SPECIAL), false);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_HEAT), false);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_MRANGE), false);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_MEDIUM_RANGE), false);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_SHOTS), false);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_TECH), true);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_TON), false);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_CRIT), false);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_REF), true);
 
-        boolean stats = rbtnStats.isSelected();
+        boolean stats = radioButtonStats.isSelected();
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DAMAGE), stats);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_RANGE), stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_TLEVEL), !stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_TRATING), !stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DPROTOTYPE), !stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DPRODUCTION), !stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DCOMMON), !stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DEXTINCT), !stats);
-        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DREINTRO), !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_TECH_LEVEL), !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_TECH_RATING), !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DATE_PROTOTYPE), !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DATE_PRODUCTION),
+              !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DATE_COMMON), !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DATE_EXTINCT), !stats);
+        columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_DATE_REINTRODUCED),
+              !stats);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_COST), !stats);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_CREW), stats);
         columnModel.setColumnVisible(columnModel.getColumnByModelIndex(EquipmentTableModel.COL_BV), stats);

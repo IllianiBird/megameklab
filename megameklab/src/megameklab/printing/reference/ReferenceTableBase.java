@@ -95,7 +95,7 @@ abstract public class ReferenceTableBase {
         g.appendChild(border);
         g.appendChild(label);
         g.appendChild(createTableBody(3.0, PADDING * 1.5 + sheet.getFontHeight(FONT_SIZE_LABEL) * 2,
-              width - 8.0, height - 15.0, PrintRecordSheet.FONT_SIZE_VSMALL));
+              width - 8.0, height - 15.0, PrintRecordSheet.FONT_SIZE_VERY_SMALL));
         return g;
     }
 
@@ -195,7 +195,7 @@ abstract public class ReferenceTableBase {
     }
 
     protected Element createRoundedBorder(double x, double y, double width, double height) {
-        // Constants used for bezier curves on corners
+        // Constants used for Bézier curves on corners
         final double RADIUS = 1.315;
         final double CONTROL = 0.726;
         final String BEZIER = "c %f,%f %f,%f %f,%f";

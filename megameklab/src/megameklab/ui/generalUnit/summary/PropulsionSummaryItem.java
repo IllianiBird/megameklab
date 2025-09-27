@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2023-2025 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -32,8 +32,8 @@
  */
 package megameklab.ui.generalUnit.summary;
 
-import megamek.common.Entity;
-import megamek.common.Tank;
+import megamek.common.units.Entity;
+import megamek.common.units.Tank;
 import megamek.common.verifier.TestTank;
 import megameklab.util.UnitUtil;
 

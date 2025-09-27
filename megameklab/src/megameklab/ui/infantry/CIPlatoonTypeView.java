@@ -1,14 +1,14 @@
 /*
  * Copyright (C) 2017-2025 The MegaMek Team. All Rights Reserved.
  *
- * This file is part of MegaMek.
+ * This file is part of MegaMekLab.
  *
- * MegaMek is free software: you can redistribute it and/or modify
+ * MegaMekLab is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License (GPL),
  * version 3 or (at your option) any later version,
  * as published by the Free Software Foundation.
  *
- * MegaMek is distributed in the hope that it will be useful,
+ * MegaMekLab is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty
  * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * See the GNU General Public License for more details.
@@ -49,10 +49,10 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
 import megamek.client.ui.util.DisplayTextField;
-import megamek.common.EntityMovementMode;
-import megamek.common.ITechManager;
-import megamek.common.Infantry;
-import megamek.common.InfantryMount;
+import megamek.common.interfaces.ITechManager;
+import megamek.common.units.EntityMovementMode;
+import megamek.common.units.Infantry;
+import megamek.common.units.InfantryMount;
 import megamek.common.verifier.TestInfantry;
 import megameklab.ui.generalUnit.BuildView;
 import megameklab.ui.generalUnit.StandardBuildLabel;
@@ -246,7 +246,7 @@ public class CIPlatoonTypeView extends BuildView implements ActionListener, Chan
         lblNumSquads.setText(isBeastMounted() && !isLargeBeastMount() ?
               resourceMap.getString("PlatoonTypeView.spnNumSquads.creatures") :
               resourceMap.getString("PlatoonTypeView.spnNumSquads.text"));
-        lblBeastMountType.setText(isBeastMounted() ? mount.getName() : "");
+        lblBeastMountType.setText(isBeastMounted() ? mount.name() : "");
     }
 
     private EntityMovementMode getMovementMode() {
@@ -259,7 +259,7 @@ public class CIPlatoonTypeView extends BuildView implements ActionListener, Chan
     }
 
     private boolean isLargeBeastMount() {
-        return (mount != null) && (mount.getSize() == InfantryMount.BeastSize.LARGE);
+        return (mount != null) && (mount.size() == InfantryMount.BeastSize.LARGE);
     }
 
     private boolean isAltMode() {

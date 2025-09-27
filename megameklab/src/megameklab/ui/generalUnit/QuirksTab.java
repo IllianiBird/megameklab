@@ -58,8 +58,8 @@ import javax.swing.JViewport;
 import megamek.client.ui.clientGUI.DialogOptionListener;
 import megamek.client.ui.panels.DialogOptionComponentYPanel;
 import megamek.client.ui.util.VerticalGridLayout;
-import megamek.common.MiscType;
-import megamek.common.Mounted;
+import megamek.common.equipment.MiscType;
+import megamek.common.equipment.Mounted;
 import megamek.common.options.IOption;
 import megamek.common.options.IOptionGroup;
 import megamek.common.options.Quirks;
@@ -151,7 +151,7 @@ public class QuirksTab extends ITab implements DialogOptionListener {
           List<DialogOptionComponentYPanel> quirksList) {
         for (Enumeration<IOptionGroup> i = getEntity().getQuirks().getGroups(); i.hasMoreElements(); ) {
             IOptionGroup group = i.nextElement();
-            List<DialogOptionComponentYPanel> quirks = collecQuirksForOptionGroup(group, quirksList);
+            List<DialogOptionComponentYPanel> quirks = collectQuirksForOptionGroup(group, quirksList);
             if (!quirks.isEmpty()) {
                 groupsToDisplay.add(new GroupInfo(group.getDisplayableName(), quirks));
             }
@@ -181,12 +181,15 @@ public class QuirksTab extends ITab implements DialogOptionListener {
     /**
      * Collects and optionally sorts quirks for a general group
      */
-    private List<DialogOptionComponentYPanel> collecQuirksForOptionGroup(IOptionGroup group,
+    private List<DialogOptionComponentYPanel> collectQuirksForOptionGroup(IOptionGroup group,
           List<DialogOptionComponentYPanel> quirksList) {
         List<DialogOptionComponentYPanel> quirksInGroup = new ArrayList<>();
         for (Enumeration<IOption> j = group.getSortedOptions(); j.hasMoreElements(); ) {
             IOption option = j.nextElement();
-            if (null == option || Quirks.isQuirkDisallowed(option, getEntity())) {continue;}
+            if (null == option || Quirks.isQuirkDisallowed(option, getEntity())) {
+                continue;
+            }
+            
             addQuirkInfo(option, quirksInGroup, quirksList);
         }
         if (SORT_QUIRKS_ALPHABETICALLY && !quirksInGroup.isEmpty()) {

@@ -32,9 +32,9 @@
  */
 package megameklab.printing;
 
-import megamek.common.EquipmentType;
-import megamek.common.Mounted;
-import megamek.common.WeaponType;
+import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.Mounted;
+import megamek.common.equipment.WeaponType;
 import megamek.common.util.AeroAVModCalculator;
 
 /**
@@ -52,7 +52,7 @@ public interface InventoryEntry {
      */
     int nRows();
 
-    public abstract String getUniqueId();
+    String getUniqueId();
 
     /**
      * @param row The row index within the entry. Should be &lt; nRows()
@@ -134,7 +134,16 @@ public interface InventoryEntry {
      *
      * @return The to-hit modifier of the item
      */
-    String getModField(int row);
+    default String getModField(int row) {
+        return getModField(row, false);
+    };
+
+    /**
+     * @param row The row index within the entry
+     *
+     * @return The to-hit modifier of the item
+     */
+    String getModField(int row, boolean baseOnly);
 
     /**
      * @return Whether lines after the first line should be indented

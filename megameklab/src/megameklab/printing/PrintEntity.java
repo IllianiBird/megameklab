@@ -32,9 +32,9 @@
  */
 package megameklab.printing;
 
-import static megamek.common.EquipmentType.T_ARMOR_BA_STANDARD;
-import static megamek.common.EquipmentType.T_ARMOR_STANDARD;
-import static megamek.common.EquipmentType.T_ARMOR_STANDARD_PROTOMEK;
+import static megamek.common.equipment.EquipmentType.T_ARMOR_BA_STANDARD;
+import static megamek.common.equipment.EquipmentType.T_ARMOR_STANDARD;
+import static megamek.common.equipment.EquipmentType.T_ARMOR_STANDARD_PROTOMEK;
 import static megamek.common.options.PilotOptions.EDGE_ADVANTAGES;
 
 import java.awt.Image;
@@ -48,6 +48,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -56,14 +57,26 @@ import megamek.client.generator.RandomNameGenerator;
 import megamek.client.ui.util.FluffImageHelper;
 import megamek.client.ui.util.UIUtil;
 import megamek.codeUtilities.StringUtility;
-import megamek.common.*;
+import megamek.common.Configuration;
+import megamek.common.CriticalSlot;
+import megamek.common.SimpleTechLevel;
 import megamek.common.annotations.Nullable;
+import megamek.common.battleArmor.BattleArmor;
+import megamek.common.equipment.EquipmentType;
 import megamek.common.eras.Era;
 import megamek.common.eras.Eras;
 import megamek.common.options.IOption;
 import megamek.common.options.IOptionGroup;
 import megamek.common.options.PilotOptions;
 import megamek.common.options.Quirks;
+import megamek.common.units.Crew;
+import megamek.common.units.CrewType;
+import megamek.common.units.Entity;
+import megamek.common.units.EntityWeightClass;
+import megamek.common.units.Mek;
+import megamek.common.units.ProtoMek;
+import megamek.common.units.UnitRole;
+import megamek.common.units.UnitType;
 import megameklab.util.CConfig;
 import megameklab.util.RSScale;
 import megameklab.util.UnitUtil;
@@ -189,9 +202,9 @@ public abstract class PrintEntity extends PrintRecordSheet {
             StringJoiner sj = new StringJoiner(", ");
             Quirks quirks = getEntity().getQuirks();
             for (Enumeration<IOptionGroup> optionGroups = quirks.getGroups(); optionGroups.hasMoreElements(); ) {
-                IOptionGroup optiongroup = optionGroups.nextElement();
-                if (quirks.count(optiongroup.getKey()) > 0) {
-                    for (Enumeration<IOption> options = optiongroup.getOptions(); options.hasMoreElements(); ) {
+                IOptionGroup optionGroup = optionGroups.nextElement();
+                if (quirks.count(optionGroup.getKey()) > 0) {
+                    for (Enumeration<IOption> options = optionGroup.getOptions(); options.hasMoreElements(); ) {
                         IOption option = options.nextElement();
                         if (option != null && option.booleanValue()) {
                             sj.add(option.getDisplayableNameWithValue());
@@ -455,23 +468,7 @@ public abstract class PrintEntity extends PrintRecordSheet {
                 setTextField(GUNNERY_SKILL + i, Integer.toString(getEntity().getCrew().getGunnery(i)), true);
                 setTextField(PILOTING_SKILL + i, Integer.toString(getEntity().getCrew().getPiloting(i)), true);
 
-                StringJoiner spaList = new StringJoiner(", ");
-                PilotOptions spas = getEntity().getCrew().getOptions();
-                for (Enumeration<IOptionGroup> optionGroups = spas.getGroups(); optionGroups.hasMoreElements(); ) {
-                    IOptionGroup optiongroup = optionGroups.nextElement();
-                    if (optiongroup.getKey().equals(EDGE_ADVANTAGES)) {
-                        // Don't print Edge abilities, only SPAs and Cybernetics
-                        continue;
-                    }
-                    if (spas.count(optiongroup.getKey()) > 0) {
-                        for (Enumeration<IOption> options = optiongroup.getOptions(); options.hasMoreElements(); ) {
-                            IOption option = options.nextElement();
-                            if (option != null && option.booleanValue()) {
-                                spaList.add(option.getDisplayableNameWithValue().replaceAll(" \\(.*?\\)", ""));
-                            }
-                        }
-                    }
-                }
+                StringJoiner spaList = getSpaList();
                 if (spaList.length() > 0) {
                     Element rect = getSVGDocument().getElementById(SPAS + (getEntity().getCrew().getSlotCount() - 1));
                     if (rect instanceof SVGRectElement) {
@@ -507,6 +504,27 @@ public abstract class PrintEntity extends PrintRecordSheet {
         }
     }
 
+    private StringJoiner getSpaList() {
+        StringJoiner spaList = new StringJoiner(", ");
+        PilotOptions spas = getEntity().getCrew().getOptions();
+        for (Enumeration<IOptionGroup> optionGroups = spas.getGroups(); optionGroups.hasMoreElements(); ) {
+            IOptionGroup optionGroup = optionGroups.nextElement();
+            if (optionGroup.getKey().equals(EDGE_ADVANTAGES)) {
+                // Don't print Edge abilities, only SPAs and Cybernetics
+                continue;
+            }
+            if (spas.count(optionGroup.getKey()) > 0) {
+                for (Enumeration<IOption> options = optionGroup.getOptions(); options.hasMoreElements(); ) {
+                    IOption option = options.nextElement();
+                    if (option != null && option.booleanValue()) {
+                        spaList.add(option.getDisplayableNameWithValue().replaceAll(" \\(.*?\\)", ""));
+                    }
+                }
+            }
+        }
+        return spaList;
+    }
+
     protected void hideUnusedCrewElements() {
         Crew crew = getEntity().getCrew();
         for (int i = 0; i < 3; i++) {
@@ -515,7 +533,7 @@ public abstract class PrintEntity extends PrintRecordSheet {
             if (!hide) {
                 blankName = crew.getName(i).isBlank()
                       && crew.getNickname(i).isBlank()
-                      && crew.getName(i) != RandomNameGenerator.UNNAMED;
+                      && !Objects.equals(crew.getName(i), RandomNameGenerator.UNNAMED);
             }
             hideElement(CREW_DAMAGE + i, hide);
             hideElement(PILOT_NAME + i, hide);
@@ -607,7 +625,10 @@ public abstract class PrintEntity extends PrintRecordSheet {
                       DEFAULT_PIP_STROKE,
                       FILL_WHITE,
                       getArmorDamage(loc, false),
-                      useAlternateArmorGrouping());
+                      useAlternateArmorGrouping(),
+                      "armor",
+                      getEntity().getLocationAbbr(loc),
+                      false);
             }
 
             element = getElementById(STRUCTURE_PIPS + getEntity().getLocationAbbr(loc));
@@ -619,7 +640,10 @@ public abstract class PrintEntity extends PrintRecordSheet {
                       DEFAULT_PIP_STROKE,
                       structurePipFill(),
                       getStructureDamage(loc),
-                      useAlternateArmorGrouping());
+                      useAlternateArmorGrouping(),
+                      "structure",
+                      getEntity().getLocationAbbr(loc),
+                      false);
             }
         }
     }
@@ -651,14 +675,11 @@ public abstract class PrintEntity extends PrintRecordSheet {
     /**
      * Returns the number of hits on the core component of the unit.
      *
-     * @param index
-     *
-     * @return
      */
     protected int getHitsCoreComponent(int index) {
         int totalHits = 0;
         for (int loc = 0; loc < getEntity().locations(); loc++) {
-            totalHits += getEntity().getHitCriticals(CriticalSlot.TYPE_SYSTEM, index, loc);
+            totalHits += getEntity().getHitCriticalSlots(CriticalSlot.TYPE_SYSTEM, index, loc);
         }
         return totalHits;
     }
@@ -809,7 +830,7 @@ public abstract class PrintEntity extends PrintRecordSheet {
     }
 
     /**
-     * Applies the current scale to a movement point value and adds the units indicator. If the units are hexes, the
+     * Applies the current scale to a movement point value and adds the units' indicator. If the units are hexes, the
      * value is rounded up.
      *
      * @param mp The movement points
@@ -821,7 +842,7 @@ public abstract class PrintEntity extends PrintRecordSheet {
     }
 
     /**
-     * Applies the current scale to a pair of movement point values, puts the second in brackets, and adds the units
+     * Applies the current scale to a pair of movement point values, puts the second in brackets, and adds the units'
      * indicator. This is used for cases when equipment may give a temporary boost to MP, such as MASC. If the units are
      * hexes, the value is rounded up.
      *
@@ -874,7 +895,7 @@ public abstract class PrintEntity extends PrintRecordSheet {
         } else {
             level = getEntity().getStaticTechLevel();
         }
-        return level.toString().substring(0, 1)
+        return level.toString().charAt(0)
               + level.toString().substring(1).toLowerCase();
     }
 
@@ -884,8 +905,7 @@ public abstract class PrintEntity extends PrintRecordSheet {
     }
 
     private String entityName() {
-        return CConfig.getMekNameArrangement().printChassis(getEntity())
-              + (StringUtility.isNullOrBlank(getEntity().getModel()) ? "" : " " + getEntity().getModel());
+        return UnitUtil.getPrintName(getEntity());
     }
 
     protected boolean useAlternateArmorGrouping() {

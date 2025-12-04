@@ -597,6 +597,8 @@ public class PrintMek extends PrintEntity {
         }
     }
 
+
+    public static final String[] PRESERVED_PIP_ATTRIBUTES = { "id", "loc", "rear", "class" };
     private Element makeFancy(SVGPathElement oldPip, boolean structure, int type) {
         var parent = oldPip.getParentNode();
         var bounds = oldPip.getBBox();
@@ -618,6 +620,14 @@ public class PrintMek extends PrintEntity {
         var newPip = createPip(x, y, radius, DEFAULT_PIP_STROKE,
               pipType,
               FILL_WHITE);
+
+        for (String attr : PRESERVED_PIP_ATTRIBUTES) {
+            if (oldPip.hasAttribute(attr)) {
+                newPip.setAttribute(attr, oldPip.getAttribute(attr));
+            }
+        }
+        oldPip.setAttribute("id", "__replaced__" + oldPip.getAttribute("id"));
+
         parent.replaceChild(newPip, oldPip);
         return newPip;
     }
@@ -842,7 +852,8 @@ public class PrintMek extends PrintEntity {
                       bbox.getWidth() + 6.0, bbox.getHeight() + 6.0);
             } else {
                 embedImage(getFluffImage(),
-                      (Element) rect.getParentNode(), getRectBBox((SVGRectElement) rect), true);
+                      (Element) rect.getParentNode(), getRectBBox((SVGRectElement) rect), true,
+                      FLUFF_IMAGE);
             }
         }
     }
@@ -917,11 +928,11 @@ public class PrintMek extends PrintEntity {
     }
 
     private String formatQuadVeeFlank() {
-        double baseFlank = ((QuadVee) mek).getCruiseMP(MPCalculationSetting.STANDARD);
-        baseFlank *= 1.5;
+        double baseCruise = ((QuadVee) mek).getCruiseMP(MPCalculationSetting.STANDARD);
+        double baseFlank = baseCruise * 1.5;
         double fullFlank;
         if (mek.getSuperCharger() != null) {
-            fullFlank = baseFlank * 2;
+            fullFlank = baseCruise * 2;
         } else {
             fullFlank = baseFlank;
         }

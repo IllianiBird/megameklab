@@ -10,6 +10,11 @@ plugins {
     id 'checkstyle'
 }
 
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = true
+    reproducibleFileOrder = true
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(17)
@@ -36,7 +41,7 @@ sourceSets {
 }
 
 ext {
-    mmlJvmOptions = ['-Xmx1024m']
+    mmlJvmOptions = ['-Xmx1024m', '-Dsun.awt.disablegrab=true']
     fileStagingDir = "${layout.buildDirectory.get()}/files"
 
     mmDir = "${rootDir}/../megamek"
@@ -202,10 +207,12 @@ tasks.register('stageFiles', Copy) {
     exclude "mmconf/mm.preferences"
     exclude "mmconf/mml.preferences"
 
+    exclude("data/**/*.cache")
+
     into fileStagingDir
 
     doLast {
-        mkdir "${fileStagingDir}/log"
+        mkdir "${fileStagingDir}/logs"
     }
 }
 

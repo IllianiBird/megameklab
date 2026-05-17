@@ -154,6 +154,7 @@ public class RecordSheetOptions {
     private ExplicitZeroModifierStyle explicitZeroModifier;
     private boolean extraPhysicals;
     private boolean fancyPips;
+    private boolean tacOpsVehicleEffectiveness;
 
     public RecordSheetOptions() {
         String paper = CConfig.getParam(CConfig.RS_PAPER_SIZE, PaperSize.US_LETTER.name());
@@ -193,6 +194,7 @@ public class RecordSheetOptions {
               ExplicitZeroModifierStyle.class, ExplicitZeroModifierStyle.DASH);
         this.extraPhysicals = CConfig.getBooleanParam(CConfig.RS_EXTRA_PHYSICALS);
         this.fancyPips = CConfig.getBooleanParam(CConfig.RS_FANCY_PIPS);
+        this.tacOpsVehicleEffectiveness = CConfig.getBooleanParam(CConfig.RS_TAC_OPS_VEHICLE_EFFECTIVENESS);
     }
 
     public RecordSheetOptions(RecordSheetOptions options) {
@@ -222,6 +224,7 @@ public class RecordSheetOptions {
         explicitZeroModifier = options.explicitZeroModifier;
         extraPhysicals = options.extraPhysicals;
         fancyPips = options.fancyPips;
+        tacOpsVehicleEffectiveness = options.tacOpsVehicleEffectiveness;
     }
 
     public PaperSize getPaperSize() {
@@ -328,6 +331,7 @@ public class RecordSheetOptions {
         this.heatProfile = heatProfile;
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     public void setTacOpsHeat(boolean tacOpsHeat) {
         this.tacOpsHeat = tacOpsHeat;
     }
@@ -352,6 +356,7 @@ public class RecordSheetOptions {
         this.alternateArmorGrouping = alternateArmorGrouping;
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     public void setFrameless(boolean frameless) {
         this.frameless = frameless;
     }
@@ -427,4 +432,12 @@ public class RecordSheetOptions {
     public void setFancyPips(boolean fancyPips) {
         this.fancyPips = fancyPips;
     }
+
+    public boolean TacOpsVehicleEffectiveness() {return tacOpsVehicleEffectiveness;}
+
+    @Deprecated(since = "0.51.0", forRemoval = true)
+    public void setTacOpsVehicleEffectiveness(boolean tacOpsVehicleEffectiveness) {
+        this.tacOpsVehicleEffectiveness = tacOpsVehicleEffectiveness;
+    }
+
 }

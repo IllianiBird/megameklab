@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2021-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -83,7 +83,8 @@ public enum EquipmentDatabaseCategory {
           (eq, en) -> (eq instanceof WeaponType) && !((WeaponType) eq).isCapital() && eq.hasFlag(F_BALLISTIC)),
 
     MISSILE("Missile",
-          (eq, en) -> (eq instanceof WeaponType) && !((WeaponType) eq).isCapital() && eq.hasFlag(F_MISSILE)),
+          (eq, en) -> ((eq instanceof WeaponType) && !((WeaponType) eq).isCapital() && eq.hasFlag(F_MISSILE))
+                || eq.is("Screen Launcher")),
 
     ARTILLERY("Artillery",
           (eq, en) -> (eq instanceof WeaponType) && eq.hasFlag(F_ARTILLERY),
@@ -127,10 +128,12 @@ public enum EquipmentDatabaseCategory {
                 && !(eq.hasFlag(F_PARTIAL_WING) && en.hasETypeFlag(Entity.ETYPE_PROTOMEK))
                 && !(eq.hasFlag(F_SPONSON_TURRET) && en.isSupportVehicle())
                 && !eq.hasFlag(F_PINTLE_TURRET))
+                || eq.is(CL_BA_BOMB_RACK)
                 || eq.is(COOLANT_POD)
                 || eq.is(BattleArmor.MINE_LAUNCHER)
                 || (eq instanceof TAGWeapon)
-                || (eq instanceof WeaponType && eq.hasFlag(F_AMS))),
+                || (eq instanceof WeaponType && eq.hasFlag(F_AMS))
+                || eq.is("Screen Launcher")),
 
     AP("Anti-Personnel",
           (eq, en) -> BattleArmorUtil.isBattleArmorAPWeapon(eq),
@@ -145,9 +148,8 @@ public enum EquipmentDatabaseCategory {
           (eq, en) -> (eq instanceof WeaponType) && eq.hasFlag(WeaponType.F_ONE_SHOT)),
 
     TORPEDO("Torpedoes",
-          (eq, en) -> (eq instanceof WeaponType)
-                && (((WeaponType) eq).getAmmoType() == AmmoType.AmmoTypeEnum.LRM_TORPEDO
-                || ((WeaponType) eq).getAmmoType() == AmmoType.AmmoTypeEnum.SRM_TORPEDO),
+          (eq, en) -> (eq instanceof WeaponType weaponType)
+                && weaponType.getAmmoType() != null && weaponType.getAmmoType().isTorpedo(),
           e -> !(e instanceof BattleArmor) && !(e instanceof Aero)),
 
     UNAVAILABLE("Unavailable"),

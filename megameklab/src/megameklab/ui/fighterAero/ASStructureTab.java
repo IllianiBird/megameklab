@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2008-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -47,7 +47,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-import megamek.codeUtilities.MathUtility;
 import megamek.common.CriticalSlot;
 import megamek.common.SimpleTechLevel;
 import megamek.common.TechConstants;
@@ -56,6 +55,8 @@ import megamek.common.enums.Faction;
 import megamek.common.equipment.ArmorType;
 import megamek.common.equipment.Engine;
 import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscMounted;
+import megamek.common.equipment.MiscType;
 import megamek.common.equipment.Mounted;
 import megamek.common.equipment.Transporter;
 import megamek.common.exceptions.LocationFullException;
@@ -156,13 +157,13 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
 
         midPanel.add(panMovement);
         midPanel.add(panFuel);
+        midPanel.add(panTransport);
         midPanel.add(panSummary);
         midPanel.add(Box.createHorizontalStrut(300));
 
         rightPanel.add(panArmor);
-        rightPanel.add(panTransport);
-        rightPanel.add(panArmorAllocation);
         rightPanel.add(panPatchwork);
+        rightPanel.add(panArmorAllocation);
 
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -257,6 +258,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         return true;
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     public void removeSystemCrits(int systemType) {
         for (int loc = 0; loc < getAero().locations(); loc++) {
             for (int slot = 0; slot < getAero().getNumberOfCriticalSlots(loc); slot++) {
@@ -348,6 +350,18 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         getAero().setSource(source);
         refresh.refreshSummary();
         refresh.refreshPreview();
+    }
+
+    @Override
+    public void publishedChanged(String published) {
+        getAero().setPublished(published);
+        refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void factionChanged(Faction faction) {
+        getEntity().setTechFaction(faction);
     }
 
     @Override
@@ -497,7 +511,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
         double totalTonnage = getAero().getWeight();
         double remainingTonnage = TestEntity.floor(totalTonnage - currentTonnage, Ceil.HALF_TON);
 
-        double maxArmor = MathUtility.clamp(getAero().getArmorWeight() + remainingTonnage, 0,
+        double maxArmor = Math.clamp(getAero().getArmorWeight() + remainingTonnage, 0,
               UnitUtil.getMaximumArmorTonnage(getAero()));
         getAero().setArmorTonnage(maxArmor);
         panArmor.removeListener(this);
@@ -754,6 +768,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
                   "Error", JOptionPane.INFORMATION_MESSAGE);
             getEntity().setArmorType(EquipmentType.T_ARMOR_STANDARD, location);
             getEntity().setArmorTechLevel(TechConstants.T_INTRO_BOX_SET);
+            panPatchwork.setFromEntity(getAero());
         } else {
             getAero().setArmorType(armor.getArmorType(), location);
             getAero().setArmorTechLevel(armor.getTechLevel(getTechManager().getGameYear(), armor.isClan()));
@@ -765,7 +780,7 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
             }
         }
         getAero().setArmorTonnage(panArmorAllocation.getTotalArmorWeight(getAero()));
-        panArmor.setFromEntity(getAero());
+        panArmor.setFromEntity(getAero(), true);
         panArmorAllocation.setFromEntity(getAero());
         refresh.refreshBuild();
         refresh.refreshPreview();
@@ -785,6 +800,29 @@ public class ASStructureTab extends ITab implements AeroBuildListener, ArmorAllo
     public void roleChanged(UnitRole role) {
         getEntity().setUnitRole(role);
         refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void dniCockpitModChanged(boolean hasMod) {
+        if (hasMod && !getAero().hasDNICockpitMod()) {
+            MiscType dniMod = (MiscType) EquipmentType.get("DNICockpitModification");
+            if (dniMod != null) {
+                try {
+                    getAero().addEquipment(dniMod, Entity.LOC_NONE);
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (!hasMod && getAero().hasDNICockpitMod()) {
+            for (MiscMounted mounted : getAero().getMisc()) {
+                if (mounted.getType().hasFlag(MiscType.F_DNI_COCKPIT_MOD)) {
+                    getAero().removeMisc(mounted.getType().getInternalName());
+                    break;
+                }
+            }
+        }
+        refresh.refreshBuild();
+        refresh.refreshStatus();
         refresh.refreshPreview();
     }
 }

@@ -54,6 +54,11 @@ public class GEMainUI extends MegaMekLabMainUI {
     private GEEquipmentTab equipmentTab;
     private FluffTab fluffTab;
     private PreviewTab previewTab;
+
+    @Override
+    protected FluffTab getFluffTab() {
+        return fluffTab;
+    }
     private StatusBar statusbar;
     private FloatingEquipmentDatabaseDialog floatingEquipmentDatabase;
 
@@ -194,14 +199,7 @@ public class GEMainUI extends MegaMekLabMainUI {
             newUnit.setModel("Gun Emplacement");
             newUnit.setYear(3145);
         } else {
-            newUnit.setChassis(oldUnit.getChassis());
-            newUnit.setModel(oldUnit.getModel());
-            newUnit.setYear(Math.max(oldUnit.getYear(),
-                  newUnit.getConstructionTechAdvancement().getIntroductionDate()));
-            newUnit.setSource(oldUnit.getSource());
-            newUnit.setManualBV(oldUnit.getManualBV());
-            newUnit.setTechLevel(oldUnit.getTechLevel());
-            newUnit.setMixedTech(oldUnit.isMixedTech());
+            copyUnitBasics(newUnit, oldUnit);
         }
         setEntity(newUnit, "");
         forceDirtyUntilNextSave();

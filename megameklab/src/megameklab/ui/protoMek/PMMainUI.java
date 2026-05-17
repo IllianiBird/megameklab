@@ -36,7 +36,6 @@ import java.awt.BorderLayout;
 import java.util.List;
 import javax.swing.JDialog;
 
-import megamek.common.SimpleTechLevel;
 import megamek.common.TechConstants;
 import megamek.common.equipment.Engine;
 import megamek.common.equipment.EquipmentType;
@@ -69,6 +68,11 @@ public class PMMainUI extends MegaMekLabMainUI {
     private QuirksTab quirksTab;
     private FluffTab fluffTab;
     private FloatingEquipmentDatabaseDialog floatingEquipmentDatabase;
+
+    @Override
+    protected FluffTab getFluffTab() {
+        return fluffTab;
+    }
 
     public PMMainUI(Entity entity, String filename) {
         super();
@@ -140,16 +144,7 @@ public class PMMainUI extends MegaMekLabMainUI {
             newUnit.setModel("Protomek");
             newUnit.setYear(3145);
         } else {
-            newUnit.setChassis(oldEntity.getChassis());
-            newUnit.setModel(oldEntity.getModel());
-            newUnit.setYear(Math.max(oldEntity.getYear(),
-                  newUnit.getConstructionTechAdvancement().getIntroductionDate()));
-            newUnit.setSource(oldEntity.getSource());
-            newUnit.setManualBV(oldEntity.getManualBV());
-            SimpleTechLevel lvl = SimpleTechLevel.max(newUnit.getStaticTechLevel(),
-                  SimpleTechLevel.convertCompoundToSimple(oldEntity.getTechLevel()));
-            newUnit.setTechLevel(lvl.getCompoundTechLevel(oldEntity.isClan()));
-            newUnit.setMixedTech(oldEntity.isMixedTech());
+            copyUnitBasics(newUnit, oldEntity);
         }
         setEntity(newUnit, "");
         forceDirtyUntilNextSave();
@@ -231,6 +226,7 @@ public class PMMainUI extends MegaMekLabMainUI {
         return structureTab.getTechManager();
     }
 
+    @Override
     public JDialog getFloatingEquipmentDatabase() {
         return floatingEquipmentDatabase;
     }

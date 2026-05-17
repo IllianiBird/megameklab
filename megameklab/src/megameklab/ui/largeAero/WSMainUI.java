@@ -36,7 +36,6 @@ import java.awt.BorderLayout;
 import java.util.List;
 import javax.swing.JDialog;
 
-import megamek.common.SimpleTechLevel;
 import megamek.common.TechConstants;
 import megamek.common.equipment.EquipmentType;
 import megamek.common.equipment.IArmorState;
@@ -75,7 +74,13 @@ public class WSMainUI extends MegaMekLabMainUI {
     private TransportTab transportTab;
     private QuirksTab quirksTab;
     private StatusBar statusbar;
+    private FluffTab fluffTab;
     private FloatingEquipmentDatabaseDialog floatingEquipmentDatabase;
+
+    @Override
+    protected FluffTab getFluffTab() {
+        return fluffTab;
+    }
 
     public WSMainUI(Entity entity, String filename) {
         super();
@@ -173,16 +178,7 @@ public class WSMainUI extends MegaMekLabMainUI {
                 newUnit.setModel("Jumpship");
             }
         } else {
-            newUnit.setChassis(oldUnit.getChassis());
-            newUnit.setModel(oldUnit.getModel());
-            newUnit.setYear(Math.max(oldUnit.getYear(),
-                  newUnit.getConstructionTechAdvancement().getIntroductionDate()));
-            newUnit.setSource(oldUnit.getSource());
-            newUnit.setManualBV(oldUnit.getManualBV());
-            SimpleTechLevel lvl = SimpleTechLevel.max(newUnit.getStaticTechLevel(),
-                  SimpleTechLevel.convertCompoundToSimple(oldUnit.getTechLevel()));
-            newUnit.setTechLevel(lvl.getCompoundTechLevel(oldUnit.isClan()));
-            newUnit.setMixedTech(oldUnit.isMixedTech());
+            copyUnitBasics(newUnit, oldUnit);
         }
         setEntity(newUnit, "");
         forceDirtyUntilNextSave();
@@ -203,7 +199,7 @@ public class WSMainUI extends MegaMekLabMainUI {
         statusbar = new StatusBar(this);
         equipmentTab = new LAEquipmentTab(this);
         buildTab = new LABuildTab(this);
-        FluffTab fluffTab = new FluffTab(this);
+        fluffTab = new FluffTab(this);
         transportTab = new TransportTab(this);
         quirksTab = new QuirksTab(this);
         structureTab.addRefreshedListener(this);
@@ -289,6 +285,7 @@ public class WSMainUI extends MegaMekLabMainUI {
         previewTab.refresh();
     }
 
+    @Override
     public JDialog getFloatingEquipmentDatabase() {
         return floatingEquipmentDatabase;
     }

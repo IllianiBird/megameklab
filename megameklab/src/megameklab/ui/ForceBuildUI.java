@@ -66,6 +66,7 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.TooManyListenersException;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import javax.swing.*;
 import javax.swing.border.Border;
@@ -85,6 +86,7 @@ import megamek.client.ui.dialogs.UnitEditorDialog;
 import megamek.client.ui.dialogs.UnitLoadingDialog;
 import megamek.client.ui.dialogs.abstractDialogs.BVDisplayDialog;
 import megamek.client.ui.dialogs.customMek.CustomMekDialog;
+import megamek.client.ui.dialogs.randomArmy.MMLForceBuilderRandomArmyDialog;
 import megamek.client.ui.panels.phaseDisplay.lobby.LobbyErrors;
 import megamek.client.ui.panels.phaseDisplay.lobby.LobbyUtility;
 import megamek.client.ui.util.UIUtil;
@@ -122,6 +124,8 @@ public class ForceBuildUI extends JFrame implements ListSelectionListener, Actio
     private JLabel totalBVLabel;
     private JScrollPane scrollPane;
     private final JPopupMenu rowPopupMenu = new JPopupMenu();
+
+    private MMLForceBuilderRandomArmyDialog randomArmyDialog;
 
     private final String mulFileName = null;
     private final Client client = UnitUtil.getDummyClient();
@@ -487,18 +491,20 @@ public class ForceBuildUI extends JFrame implements ListSelectionListener, Actio
     private void populatePopupMenu(List<Entity> selectedEntities) {
         rowPopupMenu.removeAll();
 
+        Entity selectedEntity = selectedEntities.getFirst();
+
         // --- Open Editor ---
         JMenuItem viewItem = new JMenuItem(menuResources.getString("ForceBuildUI.popup.openEditor.text"));
         Font currentFont = viewItem.getFont();
         viewItem.setFont(currentFont.deriveFont(Font.BOLD));
         viewItem.setMnemonic(KeyEvent.VK_O);
-        viewItem.addActionListener(e -> openEntityInEditor(selectedEntities.get(0)));
+        viewItem.addActionListener(e -> openEntityInEditor(selectedEntity));
         rowPopupMenu.add(viewItem);
 
         // --- Edit Pilot/Equipment/Ammo ---
         JMenuItem editItem = new JMenuItem(menuResources.getString("ForceBuildUI.popup.editPilotEquip.text"));
         editItem.setMnemonic(KeyEvent.VK_E);
-        editItem.addActionListener(e -> openEntityConfiguration(selectedEntities.get(0)));
+        editItem.addActionListener(e -> openEntityConfiguration(selectedEntity));
         rowPopupMenu.add(editItem);
 
 
@@ -506,11 +512,10 @@ public class ForceBuildUI extends JFrame implements ListSelectionListener, Actio
         JMenuItem editDamage = new JMenuItem(menuResources.getString("ForceBuildUI.popup.editDamage.text"));
         editDamage.setMnemonic(KeyEvent.VK_D);
         editDamage.addActionListener(e -> {
-            Entity entity = selectedEntities.get(0);
-            UnitEditorDialog med = new UnitEditorDialog(null, entity);
+            UnitEditorDialog med = new UnitEditorDialog(null, selectedEntity);
             med.setVisible(true);
             med.dispose();
-            MegaMekLabTabbedUI.refreshEntity(entity);
+            MegaMekLabTabbedUI.refreshEntity(selectedEntity);
         });
         rowPopupMenu.add(editDamage);
 
@@ -522,7 +527,7 @@ public class ForceBuildUI extends JFrame implements ListSelectionListener, Actio
               "ForceBuildUI.popup.BVBreakdown.text"));
         miCurrentUnitBVBreakdown.setName("miCurrentUnitBVBreakdown");
         miCurrentUnitBVBreakdown.setMnemonic(KeyEvent.VK_U);
-        miCurrentUnitBVBreakdown.addActionListener(evt -> new BVDisplayDialog(null, selectedEntities.get(0)).setVisible(
+        miCurrentUnitBVBreakdown.addActionListener(evt -> new BVDisplayDialog(null, selectedEntity).setVisible(
               true));
         rowPopupMenu.add(miCurrentUnitBVBreakdown);
 
@@ -843,6 +848,20 @@ public class ForceBuildUI extends JFrame implements ListSelectionListener, Actio
 
         buttonPanel.add(loadFromCacheButton, BorderLayout.WEST);
 
+        var randomArmyButton = new JButton("Create...");
+        Consumer<List<Entity>> receiver = list -> {
+            warnOnInvalid(list);
+            addEntities(list);
+        };
+        randomArmyButton.addActionListener(
+              e -> {
+                  if (randomArmyDialog == null) {
+                      randomArmyDialog = new MMLForceBuilderRandomArmyDialog(this, receiver);
+                  }
+                  randomArmyDialog.setVisible(true);
+              });
+        buttonPanel.add(randomArmyButton, BorderLayout.WEST);
+
         bottomPanel.add(buttonPanel, BorderLayout.WEST);
 
         // Total BV Label
@@ -1108,7 +1127,7 @@ public class ForceBuildUI extends JFrame implements ListSelectionListener, Actio
         fileChooser.setFileFilter(filter);
         fileChooser.setSelectedFile(new File(Strings.isNotBlank(mulFileName) ?
               mulFileName :
-              forceList.get(0).getShortName() + " etc." + CG_FILEPATH_MUL));
+              forceList.getFirst().getShortName() + " etc." + CG_FILEPATH_MUL));
 
         if (!(fileChooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) ||
               fileChooser.getSelectedFile() == null) {

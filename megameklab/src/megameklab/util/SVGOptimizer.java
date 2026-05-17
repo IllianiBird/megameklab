@@ -504,6 +504,7 @@ public class SVGOptimizer {
         return formatted;
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     private static void simplifyTransforms(Element element) {
         if (element.hasAttribute(SVGConstants.SVG_TRANSFORM_ATTRIBUTE)) {
             String transform = element.getAttribute(SVGConstants.SVG_TRANSFORM_ATTRIBUTE);
@@ -530,33 +531,43 @@ public class SVGOptimizer {
         final AffineTransform combined = new AffineTransform();
 
         parser.setTransformListHandler(new TransformListHandler() {
+            @Override
             public void startTransformList() {}
 
+            @Override
             public void endTransformList() {}
 
+            @Override
             public void matrix(float a, float b, float c, float d, float e,
                   float f) {combined.concatenate(new AffineTransform(a, b, c, d, e, f));}
 
+            @Override
             public void rotate(
                   float theta) {combined.concatenate(AffineTransform.getRotateInstance(Math.toRadians(theta)));}
 
+            @Override
             public void rotate(float theta, float cx, float cy) {
                 combined.concatenate(AffineTransform.getRotateInstance(Math.toRadians(theta),
                       cx,
                       cy));
             }
 
+            @Override
             public void translate(float tx) {combined.concatenate(AffineTransform.getTranslateInstance(tx, 0));}
 
+            @Override
             public void translate(float tx, float ty) {
                 combined.concatenate(AffineTransform.getTranslateInstance(tx,
                       ty));
             }
 
+            @Override
             public void scale(float sx) {combined.concatenate(AffineTransform.getScaleInstance(sx, sx));}
 
+            @Override
             public void scale(float sx, float sy) {combined.concatenate(AffineTransform.getScaleInstance(sx, sy));}
 
+            @Override
             public void skewX(float skx) {
                 combined.concatenate(new AffineTransform(1,
                       0,
@@ -566,6 +577,7 @@ public class SVGOptimizer {
                       0));
             }
 
+            @Override
             public void skewY(float sky) {
                 combined.concatenate(new AffineTransform(1,
                       Math.tan(Math.toRadians(sky)),
@@ -622,6 +634,7 @@ public class SVGOptimizer {
         return sb.toString().replaceAll("\\s+", " ").trim();
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     private static void roundTransformValues(Element element) {
         if (element.hasAttribute(SVGConstants.SVG_TRANSFORM_ATTRIBUTE)) {
             String transform = element.getAttribute(SVGConstants.SVG_TRANSFORM_ATTRIBUTE);
@@ -909,6 +922,7 @@ public class SVGOptimizer {
         }
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     private static void removeUnusedIds(Document doc, Set<String> referencedIds) {
         NodeList all = doc.getElementsByTagName("*");
         for (int i = 0; i < all.getLength(); i++) {
@@ -1158,6 +1172,7 @@ public class SVGOptimizer {
         return name1.compareTo(name2);
     };
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     private static void sortAttributes(Node node) {
         if (node.getNodeType() == Node.ELEMENT_NODE) {
             Element element = (Element) node;
@@ -1204,6 +1219,7 @@ public class SVGOptimizer {
         }
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     private static void convertShapesToPaths(Element element) {
         // Create a list of child elements to iterate over, to avoid issues with modification
         List<Element> childElements = new ArrayList<>();

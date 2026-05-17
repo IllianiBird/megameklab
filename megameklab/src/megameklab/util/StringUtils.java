@@ -86,7 +86,7 @@ import megamek.common.weapons.missiles.innerSphere.thunderbolt.ISThunderbolt15;
 import megamek.common.weapons.missiles.innerSphere.thunderbolt.ISThunderbolt20;
 import megamek.common.weapons.missiles.innerSphere.thunderbolt.ISThunderbolt5;
 import megamek.common.weapons.missiles.rocketLauncher.RLWeapon;
-import megamek.common.weapons.missiles.thuunderbolt.ThunderboltWeapon;
+import megamek.common.weapons.missiles.thunderbolt.ThunderboltWeapon;
 import megamek.common.weapons.mortars.MekMortarWeapon;
 import megamek.common.weapons.mortars.innerSphere.ISVehicularGrenadeLauncher;
 import megamek.common.weapons.other.NarcWeapon;
@@ -191,14 +191,13 @@ public class StringUtils {
                     info = Integer.toString(weapon.getRackSize());
                     info += "[DB,AE]";
                 } else if (weapon instanceof ThunderboltWeapon) {
-                    if (weapon instanceof ISThunderbolt5) {
-                        info = "5";
-                    } else if (weapon instanceof ISThunderbolt10) {
-                        info = "10";
-                    } else if (weapon instanceof ISThunderbolt15) {
-                        info = "15";
-                    } else if (weapon instanceof ISThunderbolt20) {
-                        info = "20";
+                    switch (weapon) {
+                        case ISThunderbolt5 ignored -> info = "5";
+                        case ISThunderbolt10 ignored -> info = "10";
+                        case ISThunderbolt15 ignored -> info = "15";
+                        case ISThunderbolt20 ignored -> info = "20";
+                        default -> {
+                        }
                     }
                     info += "[M]";
                 } else if (weapon instanceof NarcWeapon) {

@@ -301,6 +301,17 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     }
 
     @Override
+    public void publishedChanged(String published) {
+        getSV().setPublished(published);
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void factionChanged(Faction faction) {
+        getEntity().setTechFaction(faction);
+    }
+
+    @Override
     public void techBaseChanged(boolean clan, boolean mixed) {
         if ((clan != getSV().isClan()) || (mixed != getSV().isMixedTech())) {
             getSV().setMixedTech(mixed);
@@ -896,6 +907,29 @@ public class SVStructureTab extends ITab implements SVBuildListener {
     public void roleChanged(UnitRole role) {
         getEntity().setUnitRole(role);
         refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void dniCockpitModChanged(boolean hasMod) {
+        if (hasMod && !getSV().hasDNICockpitMod()) {
+            MiscType dniMod = (MiscType) EquipmentType.get("DNICockpitModification");
+            if (dniMod != null) {
+                try {
+                    getSV().addEquipment(dniMod, Entity.LOC_NONE);
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (!hasMod && getSV().hasDNICockpitMod()) {
+            for (MiscMounted mounted : getSV().getMisc()) {
+                if (mounted.getType().hasFlag(MiscType.F_DNI_COCKPIT_MOD)) {
+                    getSV().removeMisc(mounted.getType().getInternalName());
+                    break;
+                }
+            }
+        }
+        refresh.refreshBuild();
+        refresh.refreshStatus();
         refresh.refreshPreview();
     }
 }

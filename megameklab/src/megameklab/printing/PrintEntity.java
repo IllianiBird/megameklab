@@ -46,11 +46,9 @@ import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Set;
 import java.util.StringJoiner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,12 +56,10 @@ import java.util.regex.Pattern;
 import megamek.client.generator.RandomNameGenerator;
 import megamek.client.ui.util.FluffImageHelper;
 import megamek.client.ui.util.UIUtil;
-import megamek.codeUtilities.StringUtility;
 import megamek.common.Configuration;
 import megamek.common.CriticalSlot;
 import megamek.common.SimpleTechLevel;
 import megamek.common.annotations.Nullable;
-import megamek.common.battleArmor.BattleArmor;
 import megamek.common.equipment.EquipmentType;
 import megamek.common.eras.Era;
 import megamek.common.eras.Eras;
@@ -76,9 +72,9 @@ import megamek.common.units.CrewType;
 import megamek.common.units.Entity;
 import megamek.common.units.EntityWeightClass;
 import megamek.common.units.Mek;
-import megamek.common.units.ProtoMek;
 import megamek.common.units.UnitRole;
 import megamek.common.units.UnitType;
+import megamek.common.verifier.TestEntity;
 import megameklab.util.CConfig;
 import megameklab.util.RSScale;
 import megameklab.util.UnitUtil;
@@ -233,20 +229,17 @@ public abstract class PrintEntity extends PrintRecordSheet {
 
     /**
      * Converts a weight to a String, either in kg or tons as appropriate to the Entity, labeled with the measurement
-     * unit.
+     * unit (e.g. "1 ton", "3 tons", "2750 kg").
      *
      * @param weight The weight in tons
      *
      * @return The formatted weight with units
      */
     String formatWeight(double weight) {
-        if ((getEntity() instanceof BattleArmor)
-              || (getEntity() instanceof ProtoMek)
-              || getEntity().getWeightClass() == EntityWeightClass.WEIGHT_SMALL_SUPPORT) {
+        if (TestEntity.usesKgStandard(getEntity())) {
             return DecimalFormat.getInstance().format(weight * 1000) + " kg";
         } else {
-            return DecimalFormat.getInstance().format(weight)
-                  + ((weight == 1) ? " ton)" : " tons");
+            return DecimalFormat.getInstance().format(weight) + ((weight == 1) ? " ton" : " tons");
         }
     }
 

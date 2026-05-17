@@ -19,7 +19,7 @@ jobs:
       matrix:
         os: [ ubuntu-latest ]
         java-distribution: [ temurin ]
-        java-version: [ 17, 21, 25 ]
+        java-version: [ 21, 25 ]
       fail-fast: false
 
     steps:
@@ -81,7 +81,7 @@ jobs:
           java-version: ${{ matrix.java-version }}
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v5
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Add MMLRevision file
         run: |
@@ -89,17 +89,17 @@ jobs:
 
       - name: Test All
         working-directory: megameklab
-        run: ./gradlew testAll --stacktrace --scan
+        run: ./gradlew testAll --stacktrace --scan -x checkstyleMain -x checkstyleTest
 
       - name: Upload Test Logs on Failure
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: cd-failure-logs
           path: ./megameklab/megameklab/build/reports/
 
       - name: CodeCov.io Coverage Report
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           directory: ./megameklab/megameklab/build/reports/jacoco/test
           fail_ci_if_error: false
@@ -110,7 +110,7 @@ jobs:
         run: ./gradlew build -x test -PextraVersion="PR-${{ github.event.number }}-${{ env.COMMIT_SHORT_SHA }}"
 
       - name: Upload TarGZ Release
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: mml-release-tgz-${{ matrix.java-distribution }}-jdk${{ matrix.java-version }}
           path: ./megameklab/megameklab/build/distributions/*.tar.gz

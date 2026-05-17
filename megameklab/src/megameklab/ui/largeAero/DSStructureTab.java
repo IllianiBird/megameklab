@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2017-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -41,10 +41,8 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
-import megamek.codeUtilities.MathUtility;
 import megamek.common.SimpleTechLevel;
 import megamek.common.enums.Faction;
-import megamek.common.equipment.ArmorType;
 import megamek.common.equipment.EquipmentType;
 import megamek.common.interfaces.ITechManager;
 import megamek.common.units.Aero;
@@ -135,7 +133,6 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
         leftPanel.add(panInfo);
         leftPanel.add(iconView);
         leftPanel.add(panChassis);
-        leftPanel.add(panCrew);
 
         midPanel.add(panHeat);
         midPanel.add(panMovement);
@@ -145,6 +142,7 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
 
         rightPanel.add(panArmor);
         rightPanel.add(panArmorAllocation);
+        rightPanel.add(panCrew);
 
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -267,10 +265,30 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
     }
 
     @Override
+    public void buildYearChanged(int buildYear) {
+        super.buildYearChanged(buildYear);
+        panChassis.refresh();
+        panSummary.refresh();
+        panHeat.setFromAero(getSmallCraft());
+    }
+
+    @Override
     public void sourceChanged(String source) {
         getSmallCraft().setSource(source);
         refresh.refreshSummary();
         refresh.refreshPreview();
+    }
+
+    @Override
+    public void publishedChanged(String published) {
+        getSmallCraft().setPublished(published);
+        refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void factionChanged(Faction faction) {
+        getEntity().setTechFaction(faction);
     }
 
     @Override
@@ -377,7 +395,7 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
         double remainingTonnage = TestEntity.floor(
               totalTonnage - currentTonnage, Ceil.HALF_TON);
 
-        double maxArmor = MathUtility.clamp(getSmallCraft().getArmorWeight() + remainingTonnage, 0,
+        double maxArmor = Math.clamp(getSmallCraft().getArmorWeight() + remainingTonnage, 0,
               UnitUtil.getMaximumArmorTonnage(getSmallCraft()));
         getSmallCraft().setArmorTonnage(maxArmor);
         panArmor.removeListener(this);
@@ -527,15 +545,19 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
     @Override
     public void autoAllocateArmor() {
         // Ignore unarmored system-wide location
-        final int ARMOR_FACINGS = getSmallCraft().locations() - 1;
-        for (int loc = 0; loc < ARMOR_FACINGS; loc++) {
+        final int armoredLocations = getSmallCraft().locations() - 1;
+        for (int loc = 0; loc < armoredLocations; loc++) {
             getSmallCraft().initializeArmor(0, loc);
         }
 
         // divide armor (in excess of bonus from SI) among positions, with more toward the front
-        int bonusPerFacing = (int) TestEntity.getSIBonusArmorPoints(getSmallCraft()) / ARMOR_FACINGS;
-        int points = TestEntity.getArmorPoints(getSmallCraft())
-              - bonusPerFacing * 4;
+        int freeSiArmor = TestEntity.getSIBonusArmorPoints(getSmallCraft());
+        if (getSmallCraft().isPrimitive()) {
+            freeSiArmor = (int) (freeSiArmor * 0.66);
+        }
+        int freeSiArmorPerFacing = freeSiArmor / armoredLocations;
+        // freeSiArmorPerFacing is added to each location; due to integer division, this may be less than freeSiArmor!
+        int points = TestEntity.getArmorPoints(getSmallCraft()) - freeSiArmorPerFacing * armoredLocations;
         int nose = (int) Math.floor(points * 0.3);
         int wing = (int) Math.floor(points * 0.25);
         int aft = (int) Math.floor(points * 0.2);
@@ -554,10 +576,10 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
                 wing++;
                 break;
         }
-        getSmallCraft().initializeArmor(nose + bonusPerFacing, Aero.LOC_NOSE);
-        getSmallCraft().initializeArmor(wing + bonusPerFacing, Aero.LOC_LEFT_WING);
-        getSmallCraft().initializeArmor(wing + bonusPerFacing, Aero.LOC_RIGHT_WING);
-        getSmallCraft().initializeArmor(aft + bonusPerFacing, Aero.LOC_AFT);
+        getSmallCraft().initializeArmor(nose + freeSiArmorPerFacing, Aero.LOC_NOSE);
+        getSmallCraft().initializeArmor(wing + freeSiArmorPerFacing, Aero.LOC_LEFT_WING);
+        getSmallCraft().initializeArmor(wing + freeSiArmorPerFacing, Aero.LOC_RIGHT_WING);
+        getSmallCraft().initializeArmor(aft + freeSiArmorPerFacing, Aero.LOC_AFT);
         getSmallCraft().autoSetThresh();
 
         panArmorAllocation.setFromEntity(getSmallCraft());
@@ -565,11 +587,6 @@ public class DSStructureTab extends ITab implements DropshipBuildListener, Armor
         refresh.refreshSummary();
         refresh.refreshStatus();
 
-    }
-
-    @Override
-    public void patchworkChanged(int location, ArmorType armor) {
-        // Cannot have patchwork armor
     }
 
     @Override

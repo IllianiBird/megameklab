@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2018-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -42,10 +42,8 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JPanel;
 
-import megamek.codeUtilities.MathUtility;
 import megamek.common.SimpleTechLevel;
 import megamek.common.enums.Faction;
-import megamek.common.equipment.ArmorType;
 import megamek.common.equipment.EquipmentType;
 import megamek.common.interfaces.ITechManager;
 import megamek.common.units.Aero;
@@ -146,7 +144,6 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
         leftPanel.add(iconView);
         leftPanel.add(panChassis);
         leftPanel.add(panHeat);
-        leftPanel.add(panCrew);
 
         midPanel.add(panMovement);
         panMovement.setVisible(getJumpship().hasETypeFlag(Entity.ETYPE_WARSHIP));
@@ -157,6 +154,7 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
 
         rightPanel.add(panArmor);
         rightPanel.add(panArmorAllocation);
+        rightPanel.add(panCrew);
 
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -284,10 +282,30 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
     }
 
     @Override
+    public void buildYearChanged(int buildYear) {
+        super.buildYearChanged(buildYear);
+        panChassis.refresh();
+        panSummary.refresh();
+        panHeat.setFromAero(getJumpship());
+    }
+
+    @Override
     public void sourceChanged(String source) {
         getJumpship().setSource(source);
         refresh.refreshSummary();
         refresh.refreshPreview();
+    }
+
+    @Override
+    public void publishedChanged(String published) {
+        getJumpship().setPublished(published);
+        refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void factionChanged(Faction faction) {
+        getEntity().setTechFaction(faction);
     }
 
     @Override
@@ -391,7 +409,7 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
         double remainingTonnage = TestEntity.floor(
               totalTonnage - currentTonnage, Ceil.HALF_TON);
 
-        double maxArmor = MathUtility.clamp(getJumpship().getArmorWeight() + remainingTonnage, 0,
+        double maxArmor = Math.clamp(getJumpship().getArmorWeight() + remainingTonnage, 0,
               UnitUtil.getMaximumArmorTonnage(getJumpship()));
         getJumpship().setArmorTonnage(maxArmor);
         panArmor.removeListener(this);
@@ -475,6 +493,7 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
         getJumpship().setSail(sail);
         refresh.refreshPreview();
         refresh.refreshStatus();
+        panSummary.refresh();
     }
 
     @Override
@@ -571,16 +590,20 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
     @Override
     public void autoAllocateArmor() {
         // ignore unarmored system-wide location and warship broadsides
-        final int ARMOR_FACINGS = getJumpship() instanceof Warship ?
+        final int armorFacings = getJumpship() instanceof Warship ?
               getJumpship().locations() - 3 : getJumpship().locations() - 1;
-        for (int loc = 0; loc < ARMOR_FACINGS; loc++) {
+        for (int loc = 0; loc < armorFacings; loc++) {
             getJumpship().initializeArmor(0, loc);
         }
 
         // divide armor (in excess of bonus from SI) among positions, with more toward the front
-        int bonusPerFacing = (int) Math.floor(TestEntity.getSIBonusArmorPoints(getJumpship()) / ARMOR_FACINGS);
-        int points = TestEntity.getArmorPoints(getJumpship())
-              - bonusPerFacing * 6;
+        int freeSiArmor = TestEntity.getSIBonusArmorPoints(getJumpship());
+        if (getJumpship().isPrimitive()) {
+            freeSiArmor = (int) (freeSiArmor * 0.66);
+        }
+        int freeSiArmorPerFacing = freeSiArmor / armorFacings;
+        // freeSiArmorPerFacing is added to each location; due to integer division, this may be less than freeSiArmor!
+        int points = TestEntity.getArmorPoints(getJumpship()) - freeSiArmorPerFacing * armorFacings;
         int nose = (int) Math.floor(points * 0.22);
         int foreSides = (int) Math.floor(points * 0.18);
         int aftSides = (int) Math.floor(points * 0.16);
@@ -608,12 +631,12 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
                 foreSides++;
                 break;
         }
-        getJumpship().initializeArmor(nose + bonusPerFacing, Jumpship.LOC_NOSE);
-        getJumpship().initializeArmor(foreSides + bonusPerFacing, Jumpship.LOC_FRS);
-        getJumpship().initializeArmor(foreSides + bonusPerFacing, Jumpship.LOC_FLS);
-        getJumpship().initializeArmor(aftSides + bonusPerFacing, Jumpship.LOC_ARS);
-        getJumpship().initializeArmor(aftSides + bonusPerFacing, Jumpship.LOC_ALS);
-        getJumpship().initializeArmor(aft + bonusPerFacing, Jumpship.LOC_AFT);
+        getJumpship().initializeArmor(nose + freeSiArmorPerFacing, Jumpship.LOC_NOSE);
+        getJumpship().initializeArmor(foreSides + freeSiArmorPerFacing, Jumpship.LOC_FRS);
+        getJumpship().initializeArmor(foreSides + freeSiArmorPerFacing, Jumpship.LOC_FLS);
+        getJumpship().initializeArmor(aftSides + freeSiArmorPerFacing, Jumpship.LOC_ARS);
+        getJumpship().initializeArmor(aftSides + freeSiArmorPerFacing, Jumpship.LOC_ALS);
+        getJumpship().initializeArmor(aft + freeSiArmorPerFacing, Jumpship.LOC_AFT);
         getJumpship().autoSetThresh();
 
         panArmorAllocation.setFromEntity(getJumpship());
@@ -621,11 +644,6 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
         refresh.refreshSummary();
         refresh.refreshStatus();
 
-    }
-
-    @Override
-    public void patchworkChanged(int location, ArmorType armor) {
-        // Cannot have patchwork armor
     }
 
     @Override

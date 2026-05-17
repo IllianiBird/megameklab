@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2017-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -34,7 +34,6 @@ package megameklab.ui.battleArmor;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.List;
@@ -45,13 +44,13 @@ import javax.swing.JCheckBox;
 import megamek.common.battleArmor.BattleArmor;
 import megamek.common.equipment.EquipmentType;
 import megamek.common.equipment.EquipmentTypeLookup;
-import megamek.common.interfaces.ITechManager;
 import megamek.common.equipment.MiscType;
+import megamek.common.interfaces.ITechManager;
 import megameklab.ui.generalUnit.BuildView;
 import megameklab.ui.listeners.BABuildListener;
 
 /**
- * Structure tab panel for BA movement enhancements
+ * Panel for BA movement enhancements
  *
  * @author Neoancient
  */
@@ -70,6 +69,8 @@ public class BAEnhancementView extends BuildView implements ActionListener {
     private final JCheckBox chkJumpBooster = new JCheckBox();
     private final JCheckBox chkMechanicalJumpBooster = new JCheckBox();
     private final JCheckBox chkMyomerBooster = new JCheckBox();
+    private final JCheckBox chkDNICockpitMod = new JCheckBox();
+    private final JCheckBox chkEIInterface = new JCheckBox();
 
     private boolean ignoreEvents = false;
 
@@ -77,52 +78,75 @@ public class BAEnhancementView extends BuildView implements ActionListener {
     private final EquipmentType jumpBooster = EquipmentType.get(EquipmentTypeLookup.BA_JUMP_BOOSTER);
     private final EquipmentType mechJumpBooster = EquipmentType.get(EquipmentTypeLookup.BA_MECHANICAL_JUMP_BOOSTER);
     private final EquipmentType myomerBooster = EquipmentType.get(EquipmentTypeLookup.BA_MYOMER_BOOSTER);
+    private final EquipmentType dniCockpitMod = EquipmentType.get(EquipmentTypeLookup.DNI_COCKPIT_MOD);
+    private final EquipmentType eiInterface = EquipmentType.get(EquipmentTypeLookup.EI_INTERFACE);
+
+    private final ITechManager techManager;
 
     public BAEnhancementView(ITechManager techManager) {
+        this.techManager = techManager;
         initUI();
     }
 
     private void initUI() {
         ResourceBundle resourceMap = ResourceBundle.getBundle("megameklab.resources.Views");
+        chkPartialWing.setText(resourceMap.getString("BAEnhancementView.chkPartialWing.text"));
+        chkPartialWing.setToolTipText(resourceMap.getString("BAEnhancementView.chkPartialWing.tooltip"));
+        chkJumpBooster.setText(resourceMap.getString("BAEnhancementView.chkJumpBooster.text"));
+        chkJumpBooster.setToolTipText(resourceMap.getString("BAEnhancementView.chkJumpBooster.tooltip"));
+        chkMechanicalJumpBooster.setText(resourceMap.getString("BAEnhancementView.chkMechJumpBooster.text"));
+        chkMechanicalJumpBooster.setToolTipText(resourceMap.getString("BAEnhancementView.chkMechJumpBooster.tooltip"));
+        chkMyomerBooster.setText(resourceMap.getString("BAEnhancementView.chkMyomerBooster.text"));
+        chkMyomerBooster.setToolTipText(resourceMap.getString("BAEnhancementView.chkMyomerBooster.tooltip"));
+        chkDNICockpitMod.setText(resourceMap.getString("BAEnhancementView.chkDNICockpitMod.text"));
+        chkDNICockpitMod.setToolTipText(resourceMap.getString("BAEnhancementView.chkDNICockpitMod.tooltip"));
+        chkEIInterface.setText(resourceMap.getString("BAEnhancementView.chkEIInterface.text"));
+        chkEIInterface.setToolTipText(resourceMap.getString("BAEnhancementView.chkEIInterface.tooltip"));
 
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
-        gbc.gridy = 0;
         gbc.anchor = GridBagConstraints.NORTHWEST;
-        gbc.insets = new Insets(5, 5, 5, 5);
-        chkPartialWing.setText(resourceMap.getString("BAEnhancementView.chkPartialWing.text"));
-        chkPartialWing.setToolTipText(resourceMap.getString("BAEnhancementView.chkPartialWing.tooltip"));
+        gbc.insets = STANDARD_INSETS;
+        // a little padding; these checkboxes are awfully tight otherwise
+        gbc.ipadx = 3;
+        gbc.ipady = 3;
+
         add(chkPartialWing, gbc);
-        chkPartialWing.addActionListener(this);
-
-        gbc.gridx++;
-        chkJumpBooster.setText(resourceMap.getString("BAEnhancementView.chkJumpBooster.text"));
-        chkJumpBooster.setToolTipText(resourceMap.getString("BAEnhancementView.chkJumpBooster.tooltip"));
         add(chkJumpBooster, gbc);
-        chkJumpBooster.addActionListener(this);
-
-        gbc.gridx = 0;
-        gbc.gridy++;
-        chkMechanicalJumpBooster.setText(resourceMap.getString("BAEnhancementView.chkMechJumpBooster.text"));
-        chkMechanicalJumpBooster.setToolTipText(resourceMap.getString("BAEnhancementView.chkMechJumpBooster.tooltip"));
         add(chkMechanicalJumpBooster, gbc);
-        chkMechanicalJumpBooster.addActionListener(this);
-
-        gbc.gridx++;
-        chkMyomerBooster.setText(resourceMap.getString("BAEnhancementView.chkMyomerBooster.text"));
-        chkMyomerBooster.setToolTipText(resourceMap.getString("BAEnhancementView.chkMyomerBooster.tooltip"));
         add(chkMyomerBooster, gbc);
+        add(chkDNICockpitMod, gbc);
+        add(chkEIInterface, gbc);
+
+        chkPartialWing.addActionListener(this);
+        chkDNICockpitMod.addActionListener(this);
+        chkMechanicalJumpBooster.addActionListener(this);
+        chkJumpBooster.addActionListener(this);
         chkMyomerBooster.addActionListener(this);
+        chkEIInterface.addActionListener(this);
     }
 
     public void setFromEntity(BattleArmor ba) {
-        ignoreEvents = true;
-        chkPartialWing.setSelected(ba.hasWorkingMisc(MiscType.F_PARTIAL_WING));
-        chkJumpBooster.setSelected(ba.hasWorkingMisc(MiscType.F_JUMP_BOOSTER));
-        chkMechanicalJumpBooster.setSelected(ba.hasWorkingMisc(MiscType.F_MECHANICAL_JUMP_BOOSTER));
-        chkMyomerBooster.setSelected(ba.hasWorkingMisc(MiscType.F_MASC));
-        ignoreEvents = false;
+        try {
+            ignoreEvents = true;
+            chkPartialWing.setSelected(ba.hasMisc(EquipmentTypeLookup.BA_PARTIAL_WING));
+            chkJumpBooster.setSelected(ba.hasMisc(EquipmentTypeLookup.BA_JUMP_BOOSTER));
+            chkMechanicalJumpBooster.setSelected(ba.hasMisc(MiscType.F_MECHANICAL_JUMP_BOOSTER));
+            chkMyomerBooster.setSelected(ba.hasMisc(MiscType.F_MASC));
+
+            // DNI Cockpit Mod - IS only
+            boolean dniLegal = (dniCockpitMod != null) && techManager.isLegal(dniCockpitMod);
+            chkDNICockpitMod.setEnabled(dniLegal);
+            chkDNICockpitMod.setSelected(dniLegal && ba.hasMisc(EquipmentTypeLookup.DNI_COCKPIT_MOD));
+
+            // EI Interface - Clan only
+            boolean eiLegal = (eiInterface != null) && techManager.isLegal(eiInterface);
+            chkEIInterface.setEnabled(eiLegal);
+            chkEIInterface.setSelected(eiLegal && ba.hasMisc(EquipmentTypeLookup.EI_INTERFACE));
+        } finally {
+            ignoreEvents = false;
+        }
     }
 
     @Override
@@ -138,6 +162,10 @@ public class BAEnhancementView extends BuildView implements ActionListener {
             listeners.forEach(l -> l.enhancementChanged(mechJumpBooster, chkMechanicalJumpBooster.isSelected()));
         } else if (e.getSource() == chkMyomerBooster) {
             listeners.forEach(l -> l.enhancementChanged(myomerBooster, chkMyomerBooster.isSelected()));
+        } else if (e.getSource() == chkDNICockpitMod) {
+            listeners.forEach(l -> l.enhancementChanged(dniCockpitMod, chkDNICockpitMod.isSelected()));
+        } else if (e.getSource() == chkEIInterface) {
+            listeners.forEach(l -> l.enhancementChanged(eiInterface, chkEIInterface.isSelected()));
         }
     }
 }

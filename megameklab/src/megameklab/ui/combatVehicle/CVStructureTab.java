@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2009-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -43,7 +43,6 @@ import javax.swing.BoxLayout;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
-import megamek.codeUtilities.MathUtility;
 import megamek.common.SimpleTechLevel;
 import megamek.common.TechConstants;
 import megamek.common.bays.Bay;
@@ -51,6 +50,7 @@ import megamek.common.enums.Faction;
 import megamek.common.equipment.ArmorType;
 import megamek.common.equipment.Engine;
 import megamek.common.equipment.EquipmentType;
+import megamek.common.equipment.MiscMounted;
 import megamek.common.equipment.MiscType;
 import megamek.common.equipment.Mounted;
 import megamek.common.equipment.Transporter;
@@ -162,13 +162,13 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         leftPanel.add(panMovement);
         leftPanel.add(Box.createGlue());
 
-        midPanel.add(panArmor);
         midPanel.add(panTransport);
         midPanel.add(panSummary);
         midPanel.add(Box.createVerticalGlue());
 
-        rightPanel.add(panArmorAllocation);
+        rightPanel.add(panArmor);
         rightPanel.add(panPatchwork);
+        rightPanel.add(panArmorAllocation);
 
         gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -338,6 +338,18 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         getTank().setSource(source);
         refresh.refreshSummary();
         refresh.refreshPreview();
+    }
+
+    @Override
+    public void publishedChanged(String published) {
+        getTank().setPublished(published);
+        refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void factionChanged(Faction faction) {
+        getEntity().setTechFaction(faction);
     }
 
     @Override
@@ -520,7 +532,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
         double remainingTonnage = TestEntity.floor(
               totalTonnage - currentTonnage, Ceil.HALF_TON);
 
-        double maxArmor = MathUtility.clamp(getTank().getArmorWeight() + remainingTonnage, 0,
+        double maxArmor = Math.clamp(getTank().getArmorWeight() + remainingTonnage, 0,
               UnitUtil.getMaximumArmorTonnage(getTank()));
         getTank().setArmorTonnage(maxArmor);
         panArmor.removeListener(this);
@@ -868,6 +880,7 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
                   JOptionPane.INFORMATION_MESSAGE);
             getEntity().setArmorType(EquipmentType.T_ARMOR_STANDARD, location);
             getEntity().setArmorTechLevel(TechConstants.T_INTRO_BOX_SET);
+            panPatchwork.setFromEntity(getTank());
         } else {
             getTank().setArmorType(armor.getArmorType(), location);
             getTank().setArmorTechLevel(armor.getTechLevel(getTechManager().getGameYear(), armor.isClan()));
@@ -897,6 +910,29 @@ public class CVStructureTab extends ITab implements CVBuildListener, ArmorAlloca
     public void roleChanged(UnitRole role) {
         getEntity().setUnitRole(role);
         refresh.refreshSummary();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void dniCockpitModChanged(boolean hasMod) {
+        if (hasMod && !getTank().hasDNICockpitMod()) {
+            MiscType dniMod = (MiscType) EquipmentType.get("DNICockpitModification");
+            if (dniMod != null) {
+                try {
+                    getTank().addEquipment(dniMod, Entity.LOC_NONE);
+                } catch (Exception ignored) {
+                }
+            }
+        } else if (!hasMod && getTank().hasDNICockpitMod()) {
+            for (MiscMounted mounted : getTank().getMisc()) {
+                if (mounted.getType().hasFlag(MiscType.F_DNI_COCKPIT_MOD)) {
+                    getTank().removeMisc(mounted.getType().getInternalName());
+                    break;
+                }
+            }
+        }
+        refresh.refreshBuild();
+        refresh.refreshStatus();
         refresh.refreshPreview();
     }
 }

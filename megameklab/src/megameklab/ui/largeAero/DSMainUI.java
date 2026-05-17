@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2017-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -36,7 +36,6 @@ import java.awt.BorderLayout;
 import java.util.List;
 import javax.swing.JDialog;
 
-import megamek.common.SimpleTechLevel;
 import megamek.common.TechConstants;
 import megamek.common.equipment.EquipmentType;
 import megamek.common.equipment.IArmorState;
@@ -48,6 +47,7 @@ import megamek.common.units.Dropship;
 import megamek.common.units.Entity;
 import megamek.common.units.EntityMovementMode;
 import megamek.common.units.SmallCraft;
+import megamek.common.verifier.TestEntity;
 import megamek.logging.MMLogger;
 import megameklab.ui.MegaMekLabMainUI;
 import megameklab.ui.dialog.FloatingEquipmentDatabaseDialog;
@@ -76,6 +76,11 @@ public class DSMainUI extends MegaMekLabMainUI {
     private QuirksTab quirksTab;
     private FluffTab fluffTab;
     private FloatingEquipmentDatabaseDialog floatingEquipmentDatabase;
+
+    @Override
+    protected FluffTab getFluffTab() {
+        return fluffTab;
+    }
 
     public DSMainUI(Entity entity, String filename) {
         super();
@@ -142,7 +147,14 @@ public class DSMainUI extends MegaMekLabMainUI {
             if (loc == SmallCraft.LOC_HULL) {
                 newUnit.initializeArmor(IArmorState.ARMOR_NA, loc);
             } else {
-                newUnit.initializeArmor(newUnit.getOSI(), loc);
+                // It is not absolutely clear from the rules if the bonus SI armor must be applied to each face
+                // evenly or is free for the player to assign (TM p.191, SO:AA p.140, IO:AE p.125). MML treats it as
+                // if it has to be assigned evenly, but for primitive armor the value per facing must be adapted
+                int armor = TestEntity.getSIBonusArmorPoints(newUnit);
+                if (newUnit.isPrimitive()) {
+                    armor = (int) (armor * 0.66);
+                }
+                newUnit.initializeArmor(armor / (newUnit.locations() - 1), loc);
             }
         }
         if (null == oldUnit) {
@@ -155,16 +167,7 @@ public class DSMainUI extends MegaMekLabMainUI {
             newUnit.setSpheroid(false);
             newUnit.setMovementMode(EntityMovementMode.AERODYNE);
         } else {
-            newUnit.setChassis(oldUnit.getChassis());
-            newUnit.setModel(oldUnit.getModel());
-            newUnit.setYear(Math.max(oldUnit.getYear(),
-                  newUnit.getConstructionTechAdvancement().getIntroductionDate()));
-            newUnit.setSource(oldUnit.getSource());
-            newUnit.setManualBV(oldUnit.getManualBV());
-            SimpleTechLevel lvl = SimpleTechLevel.max(newUnit.getStaticTechLevel(),
-                  SimpleTechLevel.convertCompoundToSimple(oldUnit.getTechLevel()));
-            newUnit.setTechLevel(lvl.getCompoundTechLevel(oldUnit.isClan()));
-            newUnit.setMixedTech(oldUnit.isMixedTech());
+            copyUnitBasics(newUnit, oldUnit);
             newUnit.setSpheroid(oldUnit.isSpheroid());
             newUnit.setMovementMode(oldUnit.getMovementMode());
         }
@@ -276,6 +279,7 @@ public class DSMainUI extends MegaMekLabMainUI {
         previewTab.refresh();
     }
 
+    @Override
     public JDialog getFloatingEquipmentDatabase() {
         return floatingEquipmentDatabase;
     }

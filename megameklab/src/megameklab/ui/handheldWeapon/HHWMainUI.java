@@ -53,6 +53,11 @@ public class HHWMainUI extends MegaMekLabMainUI {
     private HHWEquipmentTab equipmentTab;
     private FluffTab fluffTab;
     private PreviewTab previewTab;
+
+    @Override
+    protected FluffTab getFluffTab() {
+        return fluffTab;
+    }
     private HHWStatusBar statusbar;
 
     public HHWMainUI(Entity entity, String filename) {
@@ -189,14 +194,7 @@ public class HHWMainUI extends MegaMekLabMainUI {
             newUnit.setModel("Handheld Weapon");
             newUnit.setYear(3145);
         } else {
-            newUnit.setChassis(oldUnit.getChassis());
-            newUnit.setModel(oldUnit.getModel());
-            newUnit.setYear(Math.max(oldUnit.getYear(),
-                  newUnit.getConstructionTechAdvancement().getIntroductionDate()));
-            newUnit.setSource(oldUnit.getSource());
-            newUnit.setManualBV(oldUnit.getManualBV());
-            newUnit.setTechLevel(oldUnit.getTechLevel());
-            newUnit.setMixedTech(oldUnit.isMixedTech());
+            copyUnitBasics(newUnit, oldUnit);
         }
         setEntity(newUnit, "");
         forceDirtyUntilNextSave();

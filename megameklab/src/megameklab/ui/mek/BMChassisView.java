@@ -141,6 +141,9 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
           isIndustrial()));
     final private TechComboBox<EquipmentType> cbEnhancement = new TechComboBox<>(EquipmentType::getName);
     final private JCheckBox chkFullHeadEject = new JCheckBox();
+    final private JCheckBox chkDNICockpitMod = new JCheckBox();
+    final private JCheckBox chkEICockpit = new JCheckBox();
+    final private JCheckBox chkDamageInterruptCircuit = new JCheckBox();
     final private JButton btnResetChassis = new JButton();
 
     private ComboBoxModel<String> baseTypesModel;
@@ -316,9 +319,34 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
         chkFullHeadEject.setToolTipText(resourceMap.getString("MekChassisView.chkFullHeadEject.tooltip"));
         chkFullHeadEject.addActionListener(this);
 
-        btnResetChassis.setText(resourceMap.getString("MekChassisView.btnResetChassis.text"));
+        chkDNICockpitMod.setText(resourceMap.getString("MekChassisView.chkDNICockpitMod.text"));
         gbc.gridx = 1;
         gbc.gridy = 9;
+        gbc.gridwidth = 3;
+        add(chkDNICockpitMod, gbc);
+        chkDNICockpitMod.setToolTipText(resourceMap.getString("MekChassisView.chkDNICockpitMod.tooltip"));
+        chkDNICockpitMod.addActionListener(this);
+
+        chkEICockpit.setText(resourceMap.getString("MekChassisView.chkEICockpit.text"));
+        gbc.gridx = 1;
+        gbc.gridy = 10;
+        gbc.gridwidth = 3;
+        add(chkEICockpit, gbc);
+        chkEICockpit.setToolTipText(resourceMap.getString("MekChassisView.chkEICockpit.tooltip"));
+        chkEICockpit.addActionListener(this);
+
+        chkDamageInterruptCircuit.setText(resourceMap.getString("MekChassisView.chkDamageInterruptCircuit.text"));
+        gbc.gridx = 1;
+        gbc.gridy = 11;
+        gbc.gridwidth = 3;
+        add(chkDamageInterruptCircuit, gbc);
+        chkDamageInterruptCircuit.setToolTipText(resourceMap.getString(
+              "MekChassisView.chkDamageInterruptCircuit.tooltip"));
+        chkDamageInterruptCircuit.addActionListener(this);
+
+        btnResetChassis.setText(resourceMap.getString("MekChassisView.btnResetChassis.text"));
+        gbc.gridx = 1;
+        gbc.gridy = 12;
         gbc.gridwidth = 3;
         add(btnResetChassis, gbc);
         btnResetChassis.setToolTipText(resourceMap.getString("MekChassisView.btnResetChassis.tooltip"));
@@ -387,6 +415,9 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
             setEnhancement(null);
         }
         setFullHeadEject(mek.hasFullHeadEject());
+        setDNICockpitMod(mek.hasDNICockpitMod());
+        setEICockpit(mek.hasEiCockpit());
+        setDamageInterruptCircuit(mek.hasDamageInterruptCircuit());
         btnResetChassis.setEnabled(mek.isOmni());
     }
 
@@ -424,6 +455,9 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
         refreshCockpit();
         refreshEnhancement();
         refreshFullHeadEject();
+        refreshDNICockpitMod();
+        refreshEICockpit();
+        refreshDamageInterruptCircuit();
 
         chkOmni.removeActionListener(this);
         chkOmni.setEnabled(!isPrimitive()
@@ -641,6 +675,41 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
         chkFullHeadEject.addActionListener(this);
     }
 
+    private void refreshDNICockpitMod() {
+        chkDNICockpitMod.removeActionListener(this);
+        EquipmentType dniEquipment = EquipmentType.get("DNICockpitModification");
+        boolean isLegal = (dniEquipment != null) && techManager.isLegal(dniEquipment);
+        chkDNICockpitMod.setVisible(isLegal);
+        if (!isLegal && chkDNICockpitMod.isSelected()) {
+            chkDNICockpitMod.setSelected(false);
+            listeners.forEach(l -> l.dniCockpitModChanged(false));
+        }
+        chkDNICockpitMod.addActionListener(this);
+    }
+
+    private void refreshEICockpit() {
+        chkEICockpit.removeActionListener(this);
+        EquipmentType eiEquipment = EquipmentType.get("EIInterface");
+        boolean isLegal = (eiEquipment != null) && techManager.isLegal(eiEquipment);
+        chkEICockpit.setVisible(isLegal);
+        if (!isLegal && chkEICockpit.isSelected()) {
+            chkEICockpit.setSelected(false);
+            listeners.forEach(l -> l.eiCockpitChanged(false));
+        }
+        chkEICockpit.addActionListener(this);
+    }
+
+    private void refreshDamageInterruptCircuit() {
+        chkDamageInterruptCircuit.removeActionListener(this);
+        EquipmentType dicEquipment = EquipmentType.get("DamageInterruptCircuit");
+        boolean isLegal = (dicEquipment != null) && techManager.isLegal(dicEquipment);
+        chkDamageInterruptCircuit.setVisible(isLegal);
+        if (!isLegal && chkDamageInterruptCircuit.isSelected()) {
+            chkDamageInterruptCircuit.setSelected(false);
+            listeners.forEach(l -> l.damageInterruptCircuitChanged(false));
+        }
+        chkDamageInterruptCircuit.addActionListener(this);
+    }
 
     public List<Engine> getAvailableEngines() {
         List<Engine> retVal = new ArrayList<>();
@@ -731,6 +800,7 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
         return (EquipmentType) cbStructure.getSelectedItem();
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     public void setStructureType(EquipmentType structure) {
         cbStructure.setSelectedItem(structure);
     }
@@ -821,12 +891,40 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
         cbEnhancement.setSelectedItem(enhancement);
     }
 
+    @Deprecated(since = "0.51.0", forRemoval = true)
     public boolean hasFullHeadEject() {
         return chkFullHeadEject.isSelected() && chkFullHeadEject.isEnabled();
     }
 
     public void setFullHeadEject(boolean eject) {
         chkFullHeadEject.setSelected(eject);
+    }
+
+    @Deprecated(since = "0.51.0", forRemoval = true)
+    public boolean hasDNICockpitMod() {
+        return chkDNICockpitMod.isSelected() && chkDNICockpitMod.isEnabled();
+    }
+
+    public void setDNICockpitMod(boolean hasMod) {
+        chkDNICockpitMod.setSelected(hasMod);
+    }
+
+    @Deprecated(since = "0.51.0", forRemoval = true)
+    public boolean hasEICockpit() {
+        return chkEICockpit.isSelected() && chkEICockpit.isEnabled();
+    }
+
+    public void setEICockpit(boolean hasEI) {
+        chkEICockpit.setSelected(hasEI);
+    }
+
+    @Deprecated(since = "0.51.0", forRemoval = true)
+    public boolean hasDamageInterruptCircuit() {
+        return chkDamageInterruptCircuit.isSelected() && chkDamageInterruptCircuit.isEnabled();
+    }
+
+    public void setDamageInterruptCircuit(boolean hasDIC) {
+        chkDamageInterruptCircuit.setSelected(hasDIC);
     }
 
     @Override
@@ -848,6 +946,12 @@ public class BMChassisView extends BuildView implements ActionListener, ChangeLi
             listeners.forEach(l -> l.enhancementChanged(getEnhancement()));
         } else if (e.getSource() == chkFullHeadEject) {
             listeners.forEach(l -> l.fullHeadEjectChanged(chkFullHeadEject.isSelected()));
+        } else if (e.getSource() == chkDNICockpitMod) {
+            listeners.forEach(l -> l.dniCockpitModChanged(chkDNICockpitMod.isSelected()));
+        } else if (e.getSource() == chkEICockpit) {
+            listeners.forEach(l -> l.eiCockpitChanged(chkEICockpit.isSelected()));
+        } else if (e.getSource() == chkDamageInterruptCircuit) {
+            listeners.forEach(l -> l.damageInterruptCircuitChanged(chkDamageInterruptCircuit.isSelected()));
         } else if (e.getSource() == btnResetChassis) {
             listeners.forEach(MekBuildListener::resetChassis);
         }

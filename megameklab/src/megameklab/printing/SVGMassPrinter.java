@@ -134,20 +134,26 @@ import static megamek.common.equipment.WeaponType.DAMAGE_VARIABLE;
  */
 public class SVGMassPrinter {
     static ResourceBundle resourcesTabs = ResourceBundle.getBundle("megameklab.resources.Tabs");
-    private final static boolean SKIP_SVG = false; // Set to true to skip SVG generation
-    private final static boolean SKIP_UNITS = false; // Set to true to skip units generation
-    private final static boolean SKIP_EQUIPMENT = false; // Set to true to skip equipment generation
-    private final static boolean SKIP_UNIT_FILES = true; // Set to true to skip BLK/MTF re-save generation
+    // The following are defaults that can be overridden via command-line arguments (see parseArgs / printUsage).
+    private static boolean SKIP_SVG = false; // Set to true to skip SVG generation
+    private static boolean SKIP_UNITS = false; // Set to true to skip units generation
+    private static boolean SKIP_EQUIPMENT = false; // Set to true to skip equipment generation
+    private static boolean SKIP_UNIT_FILES = true; // Set to true to skip BLK/MTF re-save generation
 
     private static final MMLogger logger = MMLogger.create(SVGMassPrinter.class);
     private static final int SUSTAINED_TURNS = 10; // Number of turns for sustained DPT calculation
-    private static final String TYPEFACE = "Roboto";
-    private static final String SHEETS_DIR = "sheets";
-    private static final String UNIT_FILES_DIR = "unitfiles";
+    private static String TYPEFACE = "Roboto";
+    private static String SHEETS_DIR = "sheets";
+    private static String UNIT_FILES_DIR = "unitfiles";
     private static final String UNIT_FILE = "units.json";
     private static final String UNIT_FLUFF_FILE = "units-fluff.json";
     private static final String EQUIPMENT_FILE = "equipment2.json";
-    private static final String ROOT_FOLDER = "../../svgexport";
+    private static String ROOT_FOLDER = "../../svgexport";
+    // When non-empty, only the units in these files are exported instead of the entire official unit cache.
+    private static final List<File> UNIT_FILE_OVERRIDES = new ArrayList<>();
+    // True once --units/--unit has been passed, even if it resolved to no files (so we can fail instead of
+    // silently exporting the whole cache).
+    private static boolean unitOverrideRequested = false;
     private static final String LICENSE_HEADER = """
         # MegaMek Data (C) %s by The MegaMek Team is licensed under CC BY-NC-SA 4.0.
         # To view a copy of this license, visit https://creativecommons.org/licenses/by-nc-sa/4.0/
@@ -187,6 +193,7 @@ public class SVGMassPrinter {
         public String d; // Damage type, if applicable
         public String md; // Max Damage, if applicable
         public String c; // Critical slots
+        public Integer cw; // Crew required to man this equipment, if applicable
         public int os; // If is an oneshot weapon or a double oneshot weapon (1 or 2), if applicable
         public Collection<ExportInventoryEntry> bay; // Bay weapons, if applicable
     }
@@ -441,6 +448,9 @@ public class SVGMassPrinter {
                     entry.os = 1; // If the weapon is oneshot
                 }
                 entry.c = getCriticals(entity, type);
+                if ((entity instanceof ConvInfantry infantry) && (locId == ConvInfantry.LOC_FIELD_GUNS)) {
+                    entry.cw = Math.max(2, (int) Math.ceil(type.getTonnage(infantry)));
+                }
                 list.put(key, entry);
                 return entry;
             }
@@ -1160,8 +1170,12 @@ public class SVGMassPrinter {
             this.techRating = entity.getFullRatingName();
             this.level = formatRulesLevel(entity, options);
             if (entity.hasEngine() && !(entity instanceof SmallCraft || entity instanceof Jumpship)) {
-                this.engineRating = entity.getEngine().getRating();
-                this.engine = Engine.getEngineTypeName(entity.getEngine().getEngineType()).trim();
+                Engine unitEngine = entity.getEngine();
+                this.engineRating = unitEngine.getRating();
+                this.engine = Engine.getEngineTypeName(unitEngine.getEngineType()).trim();
+                if (this.engine.equals("XL") || this.engine.equals("XXL")) {
+                    this.engine+=(unitEngine.isClan() ? " (Clan)" : " (IS)");
+                }
             }
             // This is over-convoluted for no reason, should be simplified and unified at the source
             final String majorType = Entity.getEntityMajorTypeName(entity.getEntityType());
@@ -1811,7 +1825,197 @@ public class SVGMassPrinter {
               + level.toString().substring(1).toLowerCase();
     }
 
+    /**
+     * Parses command-line arguments, overriding the built-in configuration defaults.
+     *
+     * @param args the raw command-line arguments
+     *
+     * @return {@code true} if processing should continue, {@code false} if an invalid argument was encountered.
+     *       Note: {@code --help} prints usage and exits the JVM with code 0.
+     */
+    private static boolean parseArgs(String[] args) {
+        for (int i = 0; i < args.length; i++) {
+            String arg = args[i];
+            String inlineValue = null;
+            int eq = arg.indexOf('=');
+            if (arg.startsWith("--") && (eq >= 0)) {
+                inlineValue = arg.substring(eq + 1);
+                arg = arg.substring(0, eq);
+            }
+            try {
+                switch (arg) {
+                    case "-h", "--help" -> {
+                        printUsage();
+                        System.exit(0);
+                    }
+                    case "-o", "--output", "--root" -> {
+                        ROOT_FOLDER = inlineValue != null ? inlineValue : args[++i];
+                    }
+                    case "--sheets-dir" -> SHEETS_DIR = inlineValue != null ? inlineValue : args[++i];
+                    case "--unit-files-dir" -> UNIT_FILES_DIR = inlineValue != null ? inlineValue : args[++i];
+                    case "--typeface" -> TYPEFACE = inlineValue != null ? inlineValue : args[++i];
+                    case "--skip-svg" -> SKIP_SVG = parseBool(inlineValue);
+                    case "--skip-units" -> SKIP_UNITS = parseBool(inlineValue);
+                    case "--skip-equipment" -> SKIP_EQUIPMENT = parseBool(inlineValue);
+                    case "--skip-unit-files" -> SKIP_UNIT_FILES = parseBool(inlineValue);
+                    case "--save-unit-files" -> SKIP_UNIT_FILES = !parseBool(inlineValue);
+                    case "--units", "--unit" -> {
+                        unitOverrideRequested = true;
+                        if (inlineValue != null) {
+                            collectUnitFiles(inlineValue);
+                        }
+                        // Consume all following non-option tokens as file/directory paths.
+                        while ((i + 1 < args.length) && !args[i + 1].startsWith("-")) {
+                            collectUnitFiles(args[++i]);
+                        }
+                    }
+                    default -> {
+                        logger.error("Unknown argument: {}", arg);
+                        printUsage();
+                        return false;
+                    }
+                }
+            } catch (ArrayIndexOutOfBoundsException e) {
+                logger.error("Missing value for argument {}", arg);
+                printUsage();
+                return false;
+            } catch (IllegalArgumentException e) {
+                logger.error("Invalid value for argument {}: {}", arg, e.getMessage());
+                printUsage();
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean parseBool(String value) {
+        if (value == null) {
+            return true; // bare flag means "on"
+        }
+        return switch (value.toLowerCase(Locale.ROOT)) {
+            case "true", "1", "yes", "on" -> true;
+            case "false", "0", "no", "off" -> false;
+            default -> throw new IllegalArgumentException("expected a boolean, got '" + value + "'");
+        };
+    }
+
+    /**
+     * Adds the given path to {@link #UNIT_FILE_OVERRIDES}. If the path is a directory it is scanned recursively for
+     * {@code .blk} and {@code .mtf} files.
+     */
+    private static void collectUnitFiles(String path) {
+        File file = new File(path);
+        if (!file.exists()) {
+            logger.warn("Unit path does not exist, skipping: {}", path);
+            return;
+        }
+        if (file.isDirectory()) {
+            try (var walk = Files.walk(file.toPath())) {
+                walk.filter(Files::isRegularFile)
+                      .map(Path::toFile)
+                      .filter(SVGMassPrinter::isUnitFile)
+                      .forEach(UNIT_FILE_OVERRIDES::add);
+            } catch (IOException e) {
+                logger.warn("Failed to scan directory {}: {}", path, e.getMessage());
+            }
+        } else if (isUnitFile(file)) {
+            UNIT_FILE_OVERRIDES.add(file);
+        } else {
+            logger.warn("Not a .blk/.mtf unit file, skipping: {}", path);
+        }
+    }
+
+    private static boolean isUnitFile(File file) {
+        String name = file.getName().toLowerCase(Locale.ROOT);
+        return name.endsWith(".blk") || name.endsWith(".mtf");
+    }
+
+    private static MekSummary[] loadSummariesFromOverrides() {
+        List<MekSummary> summaries = new ArrayList<>();
+        for (File file : UNIT_FILE_OVERRIDES) {
+            MekSummary summary = MekSummaryCache.getSummaryFromFile(file);
+            if (summary == null) {
+                logger.warn("Failed to load unit from {}", file.getPath());
+                continue;
+            }
+            summaries.add(summary);
+        }
+        return summaries.toArray(new MekSummary[0]);
+    }
+
+    /**
+     * Renders a single-line progress bar to standard out, updated at most once per whole percentage point so
+     * parallel worker threads don't flood the console.
+     *
+     * @param done                 the number of units processed so far
+     * @param total                the total number of units
+     * @param startMillis          the wall-clock time (ms) when processing began, for elapsed/ETA calculation
+     * @param lastReportedPercent  shared counter tracking the last percentage that was printed
+     */
+    private static void reportProgress(int done, int total, long startMillis, AtomicInteger lastReportedPercent) {
+        if (total <= 0) {
+            return;
+        }
+        int percent = (int) ((done * 100L) / total);
+        int previous;
+        do {
+            previous = lastReportedPercent.get();
+            if (percent <= previous) {
+                // Another thread already reported this percentage (or higher); nothing new to show.
+                return;
+            }
+        } while (!lastReportedPercent.compareAndSet(previous, percent));
+
+        final int barWidth = 40;
+        int filled = (percent * barWidth) / 100;
+        String bar = "=".repeat(filled) + " ".repeat(barWidth - filled);
+        long elapsed = System.currentTimeMillis() - startMillis;
+        long eta = (done > 0) ? (elapsed * (total - (long) done)) / done : 0;
+        System.out.printf("\r[%s] %3d%% (%d/%d) elapsed %s ETA %s   ",
+              bar, percent, done, total, formatDuration(elapsed), formatDuration(eta));
+        System.out.flush();
+        if (done >= total) {
+            System.out.println();
+        }
+    }
+
+    private static String formatDuration(long millis) {
+        long totalSeconds = millis / 1000;
+        long hours = totalSeconds / 3600;
+        long minutes = (totalSeconds % 3600) / 60;
+        long seconds = totalSeconds % 60;
+        return String.format("%d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    private static void printUsage() {
+        String usage = """
+              Usage: SVGMassPrinter [options]
+
+              Options:
+                -o, --output, --root <dir>    Output root folder (default: %s)
+                --sheets-dir <name>           Sub-folder for generated SVG sheets (default: %s)
+                --unit-files-dir <name>       Sub-folder for re-saved BLK/MTF files (default: %s)
+                --typeface <name>             Record sheet typeface (default: %s)
+                --skip-svg[=bool]             Skip SVG generation (default: %s)
+                --skip-units[=bool]           Skip unit generation (default: %s)
+                --skip-equipment[=bool]       Skip equipment generation (default: %s)
+                --skip-unit-files[=bool]      Skip BLK/MTF re-save (default: %s)
+                --save-unit-files[=bool]      Enable BLK/MTF re-save (inverse of --skip-unit-files)
+                --units <file|dir> [...]      Export only these .blk/.mtf files (or all such files in a
+                                              directory, scanned recursively) instead of the whole unit cache.
+                                              May be repeated; accepts multiple paths.
+                -h, --help                    Show this help and exit
+
+              Boolean flags accept true/false/1/0/yes/no/on/off; a bare flag (e.g. --skip-svg) means true.
+              """.formatted(ROOT_FOLDER, SHEETS_DIR, UNIT_FILES_DIR, TYPEFACE,
+              SKIP_SVG, SKIP_UNITS, SKIP_EQUIPMENT, SKIP_UNIT_FILES);
+        System.out.println(usage);
+    }
+
     public static void main(String[] args) {
+        if (!parseArgs(args)) {
+            System.exit(1);
+        }
         logger.info("Starting SVG Mass Printer...");
         final String rootPath = ROOT_FOLDER + File.separator + SHEETS_DIR;
         File sheetsDir = new File(rootPath);
@@ -1891,16 +2095,35 @@ public class SVGMassPrinter {
         Map<String, Entity> uniqueUnitTypes = new ConcurrentHashMap<>();
 
         RecordSheetOptions recordSheetOptions = getRecordSheetOptions();
-        MekSummaryCache cache = MekSummaryCache.getInstance(true);
 
-        MekSummary[] meks = cache.getAllMeks();
-        logger.info("Processing {} meks...", meks.length);
+        MekSummary[] meks;
+        if (!unitOverrideRequested) {
+            MekSummaryCache cache = MekSummaryCache.getInstance(true);
+            meks = cache.getAllMeks();
+            logger.info("Processing {} meks from the unit cache...", meks.length);
+        } else {
+            if (UNIT_FILE_OVERRIDES.isEmpty()) {
+                logger.error("--units was specified but no valid .blk/.mtf files were found.");
+                System.exit(1);
+            }
+            meks = loadSummariesFromOverrides();
+            if (meks.length == 0) {
+                logger.error("No valid units could be loaded from the supplied unit files.");
+                System.exit(1);
+            }
+            logger.info("Processing {} meks from {} supplied unit file(s)...", meks.length,
+                  UNIT_FILE_OVERRIDES.size());
+        }
 
         PageFormat pf = new PageFormat();
         PaperSize paperDef = recordSheetOptions.getPaperSize();
 
         final AtomicInteger processedCounter = new AtomicInteger(0);
         final AtomicInteger unitFilesSavedCounter = new AtomicInteger(0);
+        final AtomicInteger progressCounter = new AtomicInteger(0);
+        final AtomicInteger lastReportedPercent = new AtomicInteger(-1);
+        final int totalUnits = meks.length;
+        final long progressStart = System.currentTimeMillis();
         int parallelism = ForkJoinPool.getCommonPoolParallelism();
         logger.info("Starting parallel processing with {} threads...", parallelism);
 
@@ -1918,6 +2141,7 @@ public class SVGMassPrinter {
 //                    if (!mekSummary.isBattleArmor()) return null;
 //                    if (mekSummary.getMulId() != 4669) return null;
 //                    logger.info("{}", mekSummary.getName());
+              reportProgress(progressCounter.incrementAndGet(), totalUnits, progressStart, lastReportedPercent);
               Entity entity;
               synchronized (loadEntityLock) {
                   entity = mekSummary.loadEntity();
@@ -2054,6 +2278,7 @@ public class SVGMassPrinter {
               if (!uniqueUnitTypes.containsKey(unitData.type)) {
                   uniqueUnitTypes.put(unitData.type, entity);
               }
+              processedCounter.incrementAndGet();
               return unitData;
             })
             .filter(Objects::nonNull)

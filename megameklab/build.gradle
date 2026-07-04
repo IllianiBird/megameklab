@@ -227,6 +227,17 @@ tasks.register('createStartScripts', CreateStartScripts) {
             .filter { it.name.endsWith(".jar") }
 }
 
+tasks.register('createSvgMassPrinterScripts', CreateStartScripts) {
+    description = 'Create launcher scripts (svgmassprinter / svgmassprinter.bat) for the SVG mass printer CLI tool.'
+    applicationName = 'svgmassprinter'
+    mainClass = 'megameklab.printing.SVGMassPrinter'
+    outputDir = layout.buildDirectory.dir('svgMassPrinterScripts').get().asFile
+    classpath = jar.outputs.files + files(project.sourceSets.main.runtimeClasspath.files)
+            .filter { it.name.endsWith(".jar") }
+    // The mass export loads every unit; give it plenty of heap by default.
+    defaultJvmOpts = ['-Xmx4g']
+}
+
 distributions {
     main {
         distributionBaseName = 'MegaMekLab'
@@ -264,6 +275,73 @@ distributions {
 
             duplicatesStrategy = 'exclude'
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Standalone SVGMassPrinter CLI distribution.
+//
+// These are defined as explicit install/zip/tar tasks (rather than via the `distributions {}` DSL) so they are
+// NOT wired into the `assemble` / `build` / `assembleDist` lifecycle. That keeps the SVGMassPrinter tool out of
+// regular MegaMekLab releases; build it on demand with one of:
+//   ./gradlew svgMassPrinterInstall   (unpacked, run bin/svgmassprinter from the install dir)
+//   ./gradlew svgMassPrinterZip
+//   ./gradlew svgMassPrinterTar
+// ---------------------------------------------------------------------------
+ext.svgMassPrinterDistName = 'MegaMekLab-SVGMassPrinter'
+ext.svgMassPrinterInstallDir = layout.buildDirectory.dir("install/${svgMassPrinterDistName}")
+
+tasks.register('svgMassPrinterInstall', Sync) {
+    description = 'Installs the standalone SVGMassPrinter CLI tool (not part of regular releases).'
+    group = 'distribution'
+    dependsOn stageDataFiles
+    dependsOn stageFiles
+    dependsOn jar
+    dependsOn createSvgMassPrinterScripts
+
+    into svgMassPrinterInstallDir
+
+    from("${mmDir}/megamek/mmconf/log4j2.xml") {
+        exclude 'log4j2.xml'
+    }
+    from(fileStagingDir) {
+        exclude 'history.txt'
+    }
+    from("${mmDir}/megamek/build/libs/MegaMek.jar") {
+        into "lib"
+    }
+    from(project.sourceSets.main.runtimeClasspath.files
+            .findAll { it.name.endsWith(".jar") && !it.name.toLowerCase().startsWith("megamek") }) {
+        into "lib"
+    }
+    from(jar) {
+        into "lib"
+    }
+    from(tasks.named('createSvgMassPrinterScripts')) {
+        into "bin"
+    }
+    duplicatesStrategy = 'exclude'
+}
+
+tasks.register('svgMassPrinterZip', Zip) {
+    description = 'Packages the standalone SVGMassPrinter CLI tool as a zip (not part of regular releases).'
+    group = 'distribution'
+    dependsOn svgMassPrinterInstall
+    archiveBaseName = svgMassPrinterDistName
+    from(svgMassPrinterInstallDir) {
+        into svgMassPrinterDistName
+    }
+}
+
+tasks.register('svgMassPrinterTar', Tar) {
+    description = 'Packages the standalone SVGMassPrinter CLI tool as a tar.gz (not part of regular releases).'
+    group = 'distribution'
+    dependsOn svgMassPrinterInstall
+    archiveBaseName = svgMassPrinterDistName
+    archiveExtension = 'tar.gz'
+    compression = Compression.GZIP
+    from(svgMassPrinterInstallDir) {
+        into svgMassPrinterDistName
     }
 }
 

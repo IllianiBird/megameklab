@@ -45,6 +45,7 @@ import megamek.common.units.Entity;
 import megameklab.ui.MegaMekLabMainUI;
 import megameklab.ui.dialog.FloatingEquipmentDatabaseDialog;
 import megameklab.ui.generalUnit.FluffTab;
+import megameklab.ui.generalUnit.AnalysisTab;
 import megameklab.ui.generalUnit.PreviewTab;
 import megameklab.ui.generalUnit.StatusBar;
 import megameklab.ui.util.TabScrollPane;
@@ -54,6 +55,7 @@ public class GEMainUI extends MegaMekLabMainUI {
     private GEEquipmentTab equipmentTab;
     private FluffTab fluffTab;
     private PreviewTab previewTab;
+    private AnalysisTab analysisTab;
 
     @Override
     protected FluffTab getFluffTab() {
@@ -84,12 +86,14 @@ public class GEMainUI extends MegaMekLabMainUI {
         fluffTab = new FluffTab(this);
         fluffTab.setRefreshedListener(this);
         previewTab = new PreviewTab(this);
+        analysisTab = new AnalysisTab(this);
         structureTab.addRefreshedListener(this);
 
         configPane.addTab("Structure", new TabScrollPane(structureTab));
         configPane.addTab("Equipment", new TabScrollPane(equipmentTab));
         configPane.addTab("Fluff", new TabScrollPane(fluffTab));
         configPane.addTab("Preview", previewTab);
+        configPane.addTab("Analysis", analysisTab);
 
         statusbar = new GEStatusBar(this);
         statusbar.addRefreshedListener(this);
@@ -111,6 +115,7 @@ public class GEMainUI extends MegaMekLabMainUI {
         structureTab.refresh();
         fluffTab.refresh();
         previewTab.refresh();
+        analysisTab.refresh();
         statusbar.refresh();
         equipmentTab.refresh();
         refreshHeader();
@@ -162,6 +167,7 @@ public class GEMainUI extends MegaMekLabMainUI {
     public void refreshPreview() {
         super.refreshPreview();
         previewTab.refresh();
+        analysisTab.refresh();
     }
 
     @Override

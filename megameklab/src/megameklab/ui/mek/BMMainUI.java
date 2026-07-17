@@ -53,7 +53,10 @@ import megameklab.ui.MegaMekLabMainUI;
 import megameklab.ui.dialog.FloatingEquipmentDatabaseDialog;
 import megameklab.ui.generalUnit.AbstractEquipmentTab;
 import megameklab.ui.generalUnit.FluffTab;
+import megameklab.ui.generalUnit.AnalysisTab;
 import megameklab.ui.generalUnit.PreviewTab;
+import megameklab.ui.generalUnit.AvailabilityTab;
+import megameklab.util.CConfig;
 import megameklab.ui.generalUnit.QuirksTab;
 import megameklab.ui.util.TabScrollPane;
 import megameklab.util.MekUtil;
@@ -65,6 +68,7 @@ public class BMMainUI extends MegaMekLabMainUI {
     private TabScrollPane frankenMekStructureTab;
     private AbstractEquipmentTab equipmentTab;
     private PreviewTab previewTab;
+    private AnalysisTab analysisTab;
     private BMBuildTab buildTab;
     private FluffTab fluffTab;
     private BMStatusBar statusbar;
@@ -74,6 +78,7 @@ public class BMMainUI extends MegaMekLabMainUI {
         return fluffTab;
     }
     private QuirksTab quirksTab;
+    private AvailabilityTab availabilityTab;
     private FloatingEquipmentDatabaseDialog floatingEquipmentDatabase;
 
     public BMMainUI(Entity entity, String filename) {
@@ -95,16 +100,19 @@ public class BMMainUI extends MegaMekLabMainUI {
         structureTab = new BMStructureTab(this);
         frankenMekStructureTab = new TabScrollPane(structureTab.getFrankenMekStructureView());
         previewTab = new PreviewTab(this);
+        analysisTab = new AnalysisTab(this);
         statusbar = new BMStatusBar(this);
         equipmentTab = new BMEquipmentTab(this);
         buildTab = new BMBuildTab(this);
         fluffTab = new FluffTab(this);
         quirksTab = new QuirksTab(this);
+        availabilityTab = new AvailabilityTab(this);
         structureTab.addRefreshedListener(this);
         equipmentTab.addRefreshedListener(this);
         buildTab.addRefreshedListener(this);
         fluffTab.setRefreshedListener(this);
         quirksTab.addRefreshedListener(this);
+        availabilityTab.addRefreshedListener(this);
         statusbar.addRefreshedListener(this);
 
         configPane.addTab("Structure/Armor", new TabScrollPane(structureTab));
@@ -112,7 +120,11 @@ public class BMMainUI extends MegaMekLabMainUI {
         configPane.addTab("Assign Criticals", new TabScrollPane(buildTab));
         configPane.addTab("Fluff", new TabScrollPane(fluffTab));
         configPane.addTab("Quirks", new TabScrollPane(quirksTab, quirksTab.refreshOnShow));
+        if (CConfig.showAvailabilityTab()) {
+            configPane.addTab("Availability", new TabScrollPane(availabilityTab, availabilityTab.refreshOnShow));
+        }
         configPane.addTab("Preview", previewTab);
+        configPane.addTab("Analysis", analysisTab);
 
         add(configPane, BorderLayout.CENTER);
         add(statusbar, BorderLayout.SOUTH);
@@ -230,7 +242,9 @@ public class BMMainUI extends MegaMekLabMainUI {
         equipmentTab.refresh();
         buildTab.refresh();
         quirksTab.refresh();
+        availabilityTab.refresh();
         previewTab.refresh();
+        analysisTab.refresh();
         floatingEquipmentDatabase.refresh();
         fluffTab.refresh();
         refreshHeader();
@@ -263,6 +277,7 @@ public class BMMainUI extends MegaMekLabMainUI {
     public void refreshPreview() {
         super.refreshPreview();
         previewTab.refresh();
+        analysisTab.refresh();
     }
 
     @Override

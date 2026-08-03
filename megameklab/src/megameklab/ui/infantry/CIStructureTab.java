@@ -58,6 +58,7 @@ import megamek.common.units.UnitRole;
 import megamek.common.verifier.TestInfantry;
 import megamek.common.weapons.infantry.InfantryWeapon;
 import megameklab.ui.EntitySource;
+import megameklab.ui.battlefieldSupport.BFSLinkedEditor;
 import megameklab.ui.generalUnit.BasicInfoView;
 import megameklab.ui.generalUnit.IconView;
 import megameklab.ui.listeners.InfantryBuildListener;
@@ -120,6 +121,7 @@ public class CIStructureTab extends ITab implements InfantryBuildListener {
         GridBagConstraints gbc;
 
         basicInfoView.setBorder(BorderFactory.createTitledBorder("Basic Information"));
+        basicInfoView.showBattlefieldSupportAssetControl(eSource instanceof BFSLinkedEditor);
         platoonTypeView.setBorder(BorderFactory.createTitledBorder("Movement and Size"));
         weaponView.setBorder(BorderFactory.createTitledBorder("Weapons"));
         advancedView.setBorder(BorderFactory.createTitledBorder("Advanced"));
@@ -161,13 +163,13 @@ public class CIStructureTab extends ITab implements InfantryBuildListener {
         gbc.fill = GridBagConstraints.VERTICAL;
         gbc.weightx = 0;
         gbc.anchor = GridBagConstraints.NORTHWEST;
-        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.insets = new Insets(4, 4, 4, 4);
         add(leftPanelScrollPane, gbc);
 
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weightx = 1;
         gbc.weighty = 1;
-        gbc.insets = new Insets(5, 0, 5, 0);
+        gbc.insets = new Insets(4, 0, 4, 4);
         add(equipmentPane, gbc);
     }
 
@@ -182,6 +184,7 @@ public class CIStructureTab extends ITab implements InfantryBuildListener {
     public void refresh() {
 
         basicInfoView.setFromEntity(getInfantry());
+        syncBattlefieldSupportControl();
         platoonTypeView.setFromEntity(getInfantry());
         weaponView.setFromEntity(getInfantry());
         iconView.setFromEntity(getEntity());
@@ -199,6 +202,26 @@ public class CIStructureTab extends ITab implements InfantryBuildListener {
         enableTabs();
 
         addAllListeners();
+    }
+
+    /** Syncs the Basic-Info BFS toggle to the editor's current enable state and motive eligibility. */
+    private void syncBattlefieldSupportControl() {
+        if (eSource instanceof BFSLinkedEditor bfs) {
+            boolean eligible = bfs.isBattlefieldSupportAssetMotiveEligible();
+            if (!eligible && bfs.isBattlefieldSupportAssetLinked()) {
+                // The base's motive is no longer a legal asset motive; auto-disable the asset.
+                bfs.setBattlefieldSupportAssetLinked(false);
+            }
+            basicInfoView.setBattlefieldSupportAssetControlEnabled(eligible);
+            basicInfoView.setBattlefieldSupportAssetSelected(bfs.isBattlefieldSupportAssetLinked());
+        }
+    }
+
+    @Override
+    public void battlefieldSupportAssetToggled(boolean enabled) {
+        if (eSource instanceof BFSLinkedEditor bfs) {
+            bfs.setBattlefieldSupportAssetLinked(enabled);
+        }
     }
 
     public void addAllListeners() {
@@ -222,6 +245,7 @@ public class CIStructureTab extends ITab implements InfantryBuildListener {
         armorChoiceTable.addRefreshedListener(refresh);
         mountChoiceTable.addRefreshedListener(refresh);
         augmentationChoiceTable.addRefreshedListener(refresh);
+        iconView.setRefreshedListener(l);
     }
 
     public void setAsCustomization() {

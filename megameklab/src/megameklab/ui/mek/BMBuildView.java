@@ -32,7 +32,6 @@
  */
 package megameklab.ui.mek;
 
-import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -41,6 +40,7 @@ import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
@@ -94,19 +94,20 @@ public class BMBuildView extends IView implements ActionListener, MouseListener 
                 column.setPreferredWidth(250);
             }
             column.setCellRenderer(equipmentList.getRenderer());
-
         }
-        equipmentTable.setIntercellSpacing(new Dimension(0, 0));
-        equipmentTable.setShowGrid(false);
         equipmentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         equipmentTable.setDoubleBuffered(true);
         equipmentTable.addMouseListener(this);
         JScrollPane equipmentScroll = new JScrollPane(equipmentTable);
+        equipmentScroll.setMinimumSize(new Dimension(300, 200));
+        equipmentScroll.setPreferredSize(new Dimension(300, 200));
         equipmentScroll.setTransferHandler(transferHandler);
-        setLayout(new BorderLayout());
-        this.add(equipmentScroll, BorderLayout.CENTER);
-        setBorder(BorderFactory.createTitledBorder(BorderFactory.createEmptyBorder(),
-              "Unallocated Equipment", TitledBorder.TOP, TitledBorder.DEFAULT_POSITION));
+
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.add(equipmentScroll);
+        setBorder(BorderFactory.createTitledBorder(
+              BorderFactory.createEmptyBorder(), "Unallocated Equipment",
+              TitledBorder.TOP, TitledBorder.DEFAULT_POSITION));
     }
 
     public void addRefreshedListener(RefreshListener l) {

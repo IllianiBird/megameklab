@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2009-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -32,6 +32,7 @@
  */
 package megameklab.ui.generalUnit;
 
+import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -39,13 +40,15 @@ import java.awt.event.MouseListener;
 import java.util.List;
 import java.util.Vector;
 import java.util.function.Supplier;
+import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JMenuItem;
-import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.ListSelectionModel;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.TableColumn;
 
 import megamek.common.equipment.AmmoType;
 import megamek.common.equipment.MiscType;
@@ -84,31 +87,32 @@ public class UnallocatedView extends IView implements ActionListener, MouseListe
         super(eSource);
         this.refresh = refresh;
 
-        JPanel mainPanel = new JPanel();
-        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
         equipmentList = new CriticalTableModel(getEntity(), CriticalTableModel.BUILD_TABLE);
 
         equipmentTable.setModel(equipmentList);
         equipmentTable.setDragEnabled(true);
         cth = new CriticalTransferHandler(eSource, refresh.get());
         equipmentTable.setTransferHandler(cth);
-
-        equipmentList.initColumnSizes(equipmentTable);
-
         for (int i = 0; i < equipmentList.getColumnCount(); i++) {
-            equipmentTable.getColumnModel().getColumn(i).setCellRenderer(equipmentList.getRenderer());
+            TableColumn column = equipmentTable.getColumnModel().getColumn(i);
+            if (i == 0) {
+                column.setPreferredWidth(250);
+            }
+            column.setCellRenderer(equipmentList.getRenderer());
         }
-
         equipmentTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         equipmentTable.setDoubleBuffered(true);
-        JScrollPane equipmentScroll = new JScrollPane();
-        equipmentScroll.setViewportView(equipmentTable);
+        equipmentTable.addMouseListener(this);
+        JScrollPane equipmentScroll = new JScrollPane(equipmentTable);
+        equipmentScroll.setMinimumSize(new Dimension(300, 200));
+        equipmentScroll.setPreferredSize(new Dimension(300, 200));
         equipmentScroll.setTransferHandler(cth);
 
-        mainPanel.add(equipmentScroll);
-        equipmentTable.addMouseListener(this);
-
-        this.add(mainPanel);
+        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        this.add(equipmentScroll);
+        setBorder(BorderFactory.createTitledBorder(
+              BorderFactory.createEmptyBorder(), "Unallocated Equipment",
+              TitledBorder.TOP, TitledBorder.DEFAULT_POSITION));
     }
 
     public void addRefreshedListener(RefreshListener l) {

@@ -32,7 +32,6 @@
  */
 package megameklab.ui.fighterAero;
 
-import java.awt.Dimension;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
@@ -50,6 +49,7 @@ import javax.swing.ListSelectionModel;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.TableColumn;
 
+import megamek.client.ui.util.UIUtil;
 import megamek.common.equipment.AmmoType;
 import megamek.common.equipment.MiscType;
 import megamek.common.equipment.Mounted;
@@ -105,7 +105,7 @@ public class ASBuildView extends IView implements ActionListener, MouseListener 
         for (int i = 0; i < equipmentList.getColumnCount(); i++) {
             TableColumn column = equipmentTable.getColumnModel().getColumn(i);
             if (i == 0) {
-                column.setPreferredWidth(200);
+                column.setPreferredWidth(UIUtil.scaleForGUI(250));
             }
             column.setCellRenderer(equipmentList.getRenderer());
         }
@@ -113,8 +113,8 @@ public class ASBuildView extends IView implements ActionListener, MouseListener 
         equipmentTable.setDoubleBuffered(true);
         equipmentTable.addMouseListener(this);
         JScrollPane equipmentScroll = new JScrollPane(equipmentTable);
-        equipmentScroll.setMinimumSize(new Dimension(300, 200));
-        equipmentScroll.setPreferredSize(new Dimension(300, 200));
+        equipmentScroll.setMinimumSize(UIUtil.scaleForGUI(300, 200));
+        equipmentScroll.setPreferredSize(UIUtil.scaleForGUI(300, 200));
         equipmentScroll.setTransferHandler(cth);
 
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2008-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -170,11 +170,11 @@ public class DropTargetCriticalList<E> extends JList<E> implements MouseListener
 
                     if (getUnit().isOmni() && !mount.getType().isOmniFixedOnly()) {
                         if (mount.isOmniPodMounted()) {
-                            info = new JMenuItem("Change to fixed mount");
+                            info = new JMenuItem("Change to Fixed Mount");
                             info.addActionListener(evt2 -> changeOmniMounting(false));
                             popup.add(info);
                         } else if (UnitUtil.canPodMount(getUnit(), mount)) {
-                            info = new JMenuItem("Change to pod mount");
+                            info = new JMenuItem("Change to Pod Mount");
                             info.addActionListener(evt2 -> changeOmniMounting(true));
                             popup.add(info);
                         }

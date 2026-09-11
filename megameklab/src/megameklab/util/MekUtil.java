@@ -118,21 +118,21 @@ public final class MekUtil {
         int base = UnitUtil.getCriticalFreeHeatSinks(unit, unit.hasCompactHeatSinks());
         boolean splitCompact = false;
         if (unit.hasCompactHeatSinks()) {
-            // first check to see if there is a single compact heat sink outside the
-            // engine and
-            // remove this first if so
+            // First check to see if there is a single compact heat sink outside the
+            // engine and remove this first if so
             Mounted<?> mount = getSingleCompactHeatSink(unit);
             if ((null != mount) && (number > 0)) {
                 UnitUtil.removeMounted(unit, mount);
                 number--;
             }
-            // if number is now uneven, then note that we will need to split a compact
+            // If number is now uneven, then note that we will need to split a compact
             if ((number % 2) == 1) {
                 splitCompact = true;
                 number--;
             }
         }
         Vector<Mounted<?>> unassigned = new Vector<>();
+        Vector<Mounted<?>> omniAssigned = new Vector<>();
         Vector<Mounted<?>> assigned = new Vector<>();
         Vector<Mounted<?>> free = new Vector<>();
         for (Mounted<?> m : unit.getMisc()) {
@@ -145,20 +145,23 @@ public final class MekUtil {
                         unassigned.add(m);
                     }
                 } else {
-                    assigned.add(m);
+                    if (m.isOmniPodMounted()) {
+                        omniAssigned.add(m);
+                    } else {
+                        assigned.add(m);
+                    }
                 }
             }
         }
         toRemove.addAll(unassigned);
+        toRemove.addAll(omniAssigned);
         toRemove.addAll(assigned);
         toRemove.addAll(free);
         if (unit.hasCompactHeatSinks()) {
-            // need to do some number magic here. The unassigned and assigned slots should
-            // each
-            // contain two heat sinks, but if we dip into the free then we are looking at
-            // one heat
-            // sink.
-            int numberDouble = Math.min(number / 2, unassigned.size() + assigned.size());
+            // Need to do some number magic here. The unassigned, omniAssigned, and assigned slots
+            // should each contain two heat sinks, but if we dip into the free then we are looking
+            // at one heat sink.
+            int numberDouble = Math.min(number / 2, unassigned.size() + omniAssigned.size() + assigned.size());
             int numberSingle = Math.max(0, number - (2 * numberDouble));
             number = numberDouble + numberSingle;
         }
@@ -171,7 +174,7 @@ public final class MekUtil {
         if (splitCompact) {
             Mounted<?> eq = toRemove.get(number);
             int loc = eq.getLocation();
-            // remove singleCompact mount and replace with a double
+            // Remove singleCompact mount and replace with a double
             UnitUtil.removeMounted(unit, eq);
             if (!eq.getType().hasFlag(MiscType.F_HEAT_SINK)) {
                 try {

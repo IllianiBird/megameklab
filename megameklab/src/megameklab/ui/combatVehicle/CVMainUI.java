@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2009-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -252,20 +252,21 @@ public class CVMainUI extends MegaMekLabMainUI implements BFSLinkedEditor {
         if (entityType == Entity.ETYPE_VTOL) {
             newUnit = new VTOL();
             newUnit.setTechLevel(TechConstants.T_INTRO_BOX_SET);
-            newUnit.setWeight(20);
             newUnit.setMovementMode(EntityMovementMode.VTOL);
         } else if (entityType == Entity.ETYPE_SUPER_HEAVY_TANK) {
             newUnit = new SuperHeavyTank();
             newUnit.setTechLevel(TechConstants.T_IS_ADVANCED);
-            newUnit.setWeight(51);
-            newUnit.setMovementMode(EntityMovementMode.HOVER);
+            newUnit.setWeight(101);
+            newUnit.setMovementMode(EntityMovementMode.TRACKED);
         } else {
             newUnit = new Tank();
             newUnit.setTechLevel(TechConstants.T_INTRO_BOX_SET);
-            newUnit.setWeight(20);
-            newUnit.setMovementMode(EntityMovementMode.HOVER);
+            newUnit.setMovementMode(EntityMovementMode.TRACKED);
         }
-        newUnit.setYear(3145);
+        if (entityType != Entity.ETYPE_SUPER_HEAVY_TANK) {
+            newUnit.setWeight(20);
+        }
+
         newUnit.setEngine(new Engine(Math.max(10, (int) newUnit.getWeight()
               - newUnit.getSuspensionFactor()), Engine.NORMAL_ENGINE,
               Engine.TANK_ENGINE));
@@ -284,7 +285,7 @@ public class CVMainUI extends MegaMekLabMainUI implements BFSLinkedEditor {
         }
         if (null == oldEntity) {
             newUnit.setChassis("New");
-            newUnit.setModel("Tank");
+            newUnit.setModel("Combat Vehicle");
             newUnit.setYear(3145);
         } else {
             copyUnitBasics(newUnit, oldEntity);

@@ -713,6 +713,22 @@ public class WSStructureTab extends ITab implements AdvancedAeroBuildListener, A
     }
 
     @Override
+    public void autoAssignLifeboats() {
+        getJumpship().setLifeBoats(AeroUtil.getNAutoAssignEscapeEntities(getJumpship()));
+        refreshSummary();
+        refresh.refreshStatus();
+        refresh.refreshPreview();
+    }
+
+    @Override
+    public void autoAssignEscapePods() {
+        getJumpship().setEscapePods(AeroUtil.getNAutoAssignEscapeEntities(getJumpship()));
+        refreshSummary();
+        refresh.refreshStatus();
+        refresh.refreshPreview();
+    }
+
+    @Override
     public void gravDecksChanged(List<Integer> deckSizes) {
         getJumpship().getGravDecks().clear();
         getJumpship().getGravDecks().addAll(deckSizes);

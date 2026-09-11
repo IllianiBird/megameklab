@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2017-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -797,6 +797,11 @@ public class PrintMek extends PrintEntity {
                   && (crit.getMount().getType().hasFlag(MiscType.F_MODULAR_ARMOR))) {
                 final String critName = formatCritName(crit);
                 final double textLength = getTextLength(critName, fontSize, weight);
+                // Make pip start position the same for both front and rear facing Modular Armor
+                double pipX = textLength;
+                if (!critName.contains("(R)")) {
+                    pipX = getTextLength(critName + " (R)", fontSize, weight);
+                }
                 if (crit.isDamaged()) {
                     addLineThrough(locGroup,
                           critX,
@@ -806,8 +811,8 @@ public class PrintMek extends PrintEntity {
                 addTextElement(g, critX, currY, critName, fontSize, SVGConstants.SVG_START_VALUE, weight,
                       SVGConstants.SVG_NORMAL_VALUE, fill);
                 g.setAttributeNS(null, "modularArmor", "1");
-                x = critX + textLength;
-                double remainingW = viewX + viewWidth - x;
+                x = critX + pipX;
+                double remainingW = viewX + viewWidth + 5 - x;
                 double spacing = remainingW / 6.0;
                 double radius = spacing * 0.25;
                 double y = currY - lineHeight + spacing;

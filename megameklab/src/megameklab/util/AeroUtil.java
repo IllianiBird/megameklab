@@ -291,6 +291,10 @@ public final class AeroUtil {
         assignQuarters(aero, officer + firstClass, standardCrew, secondClass, steerageCrew + steeragePassenger);
     }
 
+    public static int getNAutoAssignEscapeEntities(Aero aero) {
+        return (int) Math.ceil((aero.getNCrew() + aero.getNPassenger() + aero.getNMarines() + aero.getNBattleArmor()) / 7.0);
+    }
+
     public static void updateLoadedAero(Aero unit) {
         if (unit.hasETypeFlag(Entity.ETYPE_SMALL_CRAFT)) {
             if (unit.getArmorType(Aero.LOC_NOSE) == EquipmentType.T_ARMOR_STANDARD) {

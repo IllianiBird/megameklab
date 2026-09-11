@@ -33,18 +33,27 @@
 
 package megameklab.printing;
 
+import static megamek.common.equipment.EquipmentType.T_ARMOR_STANDARD;
+import static megamek.common.equipment.WeaponType.DAMAGE_ARTILLERY;
+import static megamek.common.equipment.WeaponType.DAMAGE_BY_CLUSTER_TABLE;
+import static megamek.common.equipment.WeaponType.DAMAGE_SPECIAL;
+import static megamek.common.equipment.WeaponType.DAMAGE_VARIABLE;
+
 import java.awt.print.PageFormat;
-import java.math.BigDecimal;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.PrintStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.System;
+import java.io.PrintStream;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.NumberFormat;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import javax.swing.JComponent;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -69,37 +78,37 @@ import megamek.client.ui.tileset.MMStaticDirectoryManager;
 import megamek.client.ui.tileset.MekTileset;
 import megamek.client.ui.util.FluffImageHelper;
 import megamek.common.*;
+import megamek.common.actions.ClubAttackAction;
+import megamek.common.actions.KickAttackAction;
 import megamek.common.alphaStrike.ASDamageVector;
 import megamek.common.alphaStrike.ASSpecialAbilityCollection;
+import megamek.common.alphaStrike.ASUnitType;
+import megamek.common.alphaStrike.AlphaStrikeElement;
 import megamek.common.alphaStrike.AlphaStrikeHelper;
+import megamek.common.alphaStrike.conversion.ASConverter;
+import megamek.common.annotations.Nullable;
 import megamek.common.battleArmor.BattleArmor;
-import megamek.common.battlefieldSupport.BattlefieldSupportAsset;
 import megamek.common.battleArmor.BattleArmorHandles;
+import megamek.common.battlefieldSupport.BattlefieldSupportAsset;
 import megamek.common.bays.BattleArmorBay;
 import megamek.common.bays.Bay;
 import megamek.common.bays.InfantryBay;
 import megamek.common.bays.ProtoMekBay;
+import megamek.common.enums.Faction;
+import megamek.common.enums.WeaponSortOrder;
 import megamek.common.equipment.*;
 import megamek.common.equipment.enums.MiscTypeFlag;
 import megamek.common.loaders.MekSummary;
 import megamek.common.loaders.MekSummaryCache;
-import megamek.common.units.*;
-import megamek.common.actions.ClubAttackAction;
-import megamek.common.actions.KickAttackAction;
-import megamek.common.alphaStrike.ASUnitType;
-import megamek.common.alphaStrike.AlphaStrikeElement;
-import megamek.common.alphaStrike.conversion.ASConverter;
-import megamek.common.annotations.Nullable;
-import megamek.common.enums.Faction;
-import megamek.common.enums.WeaponSortOrder;
 import megamek.common.options.IOption;
 import megamek.common.options.IOptionGroup;
 import megamek.common.options.OptionsConstants;
 import megamek.common.options.Quirks;
+import megamek.common.units.*;
 import megamek.common.util.UnitRulesRefUtil;
-import megamek.common.verifier.TestProtoMek;
 import megamek.common.verifier.TestEntity;
 import megamek.common.verifier.TestInfantry;
+import megamek.common.verifier.TestProtoMek;
 import megamek.common.weapons.autoCannons.RACWeapon;
 import megamek.common.weapons.autoCannons.UACWeapon;
 import megamek.common.weapons.bayWeapons.BayWeapon;
@@ -123,18 +132,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.w3c.dom.svg.SVGDocument;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
-
-import static megamek.common.equipment.EquipmentType.T_ARMOR_BA_STANDARD;
-import static megamek.common.equipment.EquipmentType.T_ARMOR_STANDARD;
-import static megamek.common.equipment.EquipmentType.T_ARMOR_STANDARD_PROTOMEK;
-import static megamek.common.equipment.WeaponType.DAMAGE_ARTILLERY;
-import static megamek.common.equipment.WeaponType.DAMAGE_BY_CLUSTER_TABLE;
-import static megamek.common.equipment.WeaponType.DAMAGE_SPECIAL;
-import static megamek.common.equipment.WeaponType.DAMAGE_VARIABLE;
 
 /**
  * @author drake
@@ -228,6 +225,8 @@ public class SVGMassPrinter {
         public int os; // If is an oneshot weapon or a double oneshot weapon (1 or 2), if applicable
         public Collection<ExportInventoryEntry> bay; // Bay weapons, if applicable
     }
+
+    public record MaterialLayoutEntry(int type, boolean clan) {}
 
     public static class CalculationDetail {
         public String type;
@@ -878,34 +877,34 @@ public class SVGMassPrinter {
             list.put(locationAbbreviation + ":" + id, entry);
         }
 
-        /**
-                 * Exports the entity's selected internal structure as one normalized component.
-                 * Mounted structure critical slots are deliberately omitted from the inventory export.
-         */
+        /** Exports one uniform structure; hybrid distribution belongs to UnitData.hybridLayout. */
         private void addImplicitStructureEntry(Map<String, ExportInventoryEntry> list, Entity entity) {
-                        if (entity.getStructureType() < 0) {
+            if ((entity instanceof Mek mek) && mek.hasHybridFrankenMekStructure()) {
                 return;
             }
-
-            StructureType structure = EquipmentType.getStructureFromName(
-                  EquipmentType.getStructureTypeName(entity.getStructureType(), entity.isClan()));
+            StructureType structure = structureAt(entity, 0);
             if (structure == null) {
                 return;
             }
+            list.put(structure.getInternalName() + "__structure",
+                  syntheticMaterialEntry(entity, structure, "Structure"));
+        }
 
-            ExportInventoryEntry entry = new ExportInventoryEntry();
-            entry.id = structure.getInternalName();
-            entry.n = withMaterialSuffix(cleanupName(structure.getShortName()), "Structure");
-            entry.t = "S";
-            entry.q = 1;
-            entry.p = -1;
-            entry.c = getCriticals(entity, structure);
-            list.put(structure.getInternalName() + "__S", entry);
+        private StructureType structureAt(Entity entity, int location) {
+            if (entity instanceof Mek mek && mek.isFrankenMek()) {
+                EquipmentType structure = mek.getFrankenMekStructureEquipment(location);
+                return structure instanceof StructureType ? (StructureType) structure : null;
+            }
+            if (entity.getStructureType() < 0) {
+                return null;
+            }
+            return EquipmentType.getStructureFromName(
+                  EquipmentType.getStructureTypeName(entity.getStructureType(), entity.isClan()));
         }
 
         /**
-         * Exports armor as normalized entity-level entries. Patchwork retains its marker and exposes every distinct
-         * effective armor material, while location-specific armor critical slots remain an implementation detail.
+         * Exports one uniform armor entry. Patchwork keeps only its marker; its distribution belongs to
+         * UnitData.patchworkLayout.
          */
         private void addSyntheticArmorEntries(Map<String, ExportInventoryEntry> list, Entity entity) {
             if (entity.locations() == 0) {
@@ -913,40 +912,32 @@ public class SVGMassPrinter {
             }
 
             if (entity.hasPatchworkArmor()) {
-                addSyntheticArmorEntry(list, entity, EquipmentType.T_ARMOR_PATCHWORK, false, "__patchwork");
-                Set<String> emittedArmor = new HashSet<>();
-                for (int location = 0; location < entity.locations(); location++) {
-                    int armorType = entity.getArmorType(location);
-                    boolean clanArmor = entity.isClanArmor(location);
-                    String key = armorType + ":" + clanArmor;
-                    if (emittedArmor.add(key)) {
-                        addSyntheticArmorEntry(list, entity, armorType, clanArmor, "__armor_" + key);
-                    }
-                }
-            } else {
-                addSyntheticArmorEntry(list, entity, entity.getArmorType(0), entity.isClanArmor(0), "__armor");
+                ArmorType patchwork = ArmorType.of(EquipmentType.T_ARMOR_PATCHWORK, false);
+                list.put(patchwork.getInternalName() + "__patchwork",
+                      syntheticMaterialEntry(entity, patchwork, "Armor"));
+                return;
             }
-        }
 
-        private void addSyntheticArmorEntry(Map<String, ExportInventoryEntry> list, Entity entity, int armorType,
-                                             boolean clanArmor, String suffix) {
+            int armorType = entity.getArmorType(0);
             if (armorType < 0) {
                 return;
             }
-
-            ArmorType armor = EquipmentType.getArmorFromName(EquipmentType.getArmorTypeName(armorType, clanArmor));
-            if (armor == null) {
-                return;
+            ArmorType armor = ArmorType.of(armorType, entity.isClanArmor(0));
+            if (armor != null) {
+                list.put(armor.getInternalName() + "__armor",
+                      syntheticMaterialEntry(entity, armor, "Armor"));
             }
+        }
 
+        private ExportInventoryEntry syntheticMaterialEntry(Entity entity, EquipmentType material, String suffix) {
             ExportInventoryEntry entry = new ExportInventoryEntry();
-            entry.id = armor.getInternalName();
-            entry.n = withMaterialSuffix(cleanupName(armor.getShortName()), "Armor");
+            entry.id = material.getInternalName();
+            entry.n = withMaterialSuffix(cleanupName(material.getShortName()), suffix);
             entry.t = "S";
             entry.q = 1;
             entry.p = -1;
-            entry.c = getCriticals(entity, armor);
-            list.put(armor.getInternalName() + suffix, entry);
+            entry.c = getCriticals(entity, material);
+            return entry;
         }
 
         private String withMaterialSuffix(String name, String suffix) {
@@ -1076,6 +1067,10 @@ public class SVGMassPrinter {
         public String role; // Role, "Assault", "Scout", etc.
         public String armorType; // Armor Type
         public String structureType; // Internal Structure Type
+        @JsonInclude(JsonInclude.Include.NON_EMPTY)
+        public Map<String, MaterialLayoutEntry> patchworkLayout;
+        @JsonInclude(JsonInclude.Include.NON_EMPTY)
+        public Map<String, MaterialLayoutEntry> hybridLayout;
         public int armor; // Total armor
         public double armorPer; // Armor %
         public int internal; // Total internal structure
@@ -1083,8 +1078,8 @@ public class SVGMassPrinter {
         public int squads;
         @JsonInclude(JsonInclude.Include.NON_EMPTY)
         public int squadSize;
-        public int heat; // Total heat generation
-        public int dissipation; // Heat capacity
+        public Integer heat; // Total heat generation; null when the unit does not track heat
+        public Integer dissipation; // Heat capacity; null when the unit does not track heat
         @JsonInclude(JsonInclude.Include.NON_EMPTY)
         public int[] diss; // Max Dissipation
         public int engineHS; // Number of engine-integrated (critical-free) heat sinks
@@ -1421,7 +1416,7 @@ public class SVGMassPrinter {
                 }
             }
 
-            if (entity instanceof Dropship) {
+            if ((entity instanceof Dropship) || (entity instanceof Jumpship)) {
                 for (Mounted<?> mount : entity.getMisc()) {
                     if (PrintUtil.isPrintableEquipment(mount.getType(), options)) {
                         feats.add(mount.getShortName());
@@ -1577,6 +1572,8 @@ public class SVGMassPrinter {
             this.role = formatRole(entity);
             this.armorType = getArmorType(entity);
             this.structureType = getStructureType(entity);
+            this.patchworkLayout = getPatchworkLayout(entity);
+            this.hybridLayout = getHybridLayout(entity);
             int maxArmor = UnitUtil.getMaximumArmorPoints(entity);
             this.armor = entity.getTotalOArmor();
             entity.isBattleArmor();
@@ -1605,8 +1602,8 @@ public class SVGMassPrinter {
                     this.engineHS = aero.getHeatSinks(); // - aero.getPodHeatSinks();
                 }
             } else {
-                this.heat = -1;
-                this.dissipation = -1;
+                this.heat = null;
+                this.dissipation = null;
             }
             this.moveType = getMoveType(entity);
             this.walk = entity.getWalkMP();
@@ -2325,33 +2322,44 @@ public class SVGMassPrinter {
                 }
                 return armorType;
             } else {
-                boolean hasSpecial = false;
-                for (int loc = 0; loc < entity.locations(); loc++) {
-                    if ((entity.getArmorType(loc) != T_ARMOR_STANDARD)
-                          && (entity.getArmorType(loc) != T_ARMOR_BA_STANDARD)
-                          && (entity.getArmorType(loc) != T_ARMOR_STANDARD_PROTOMEK)
-                          // Stealth armor loses special properties when used with patchwork, so we don't
-                          // need to show it.
-                          && (entity.getArmorType(loc) != EquipmentType.T_ARMOR_STEALTH)
-                          && (entity.getArmorType(loc) != EquipmentType.T_ARMOR_STEALTH_VEHICLE)) {
-                        hasSpecial = true;
-                        break;
-                    }
-                }
-                if (hasSpecial) {
-                    return EquipmentType.getArmorTypeName(EquipmentType.T_ARMOR_PATCHWORK);
-                } else {
-                    return "Standard Armor";
-                }
+                return EquipmentType.getArmorTypeName(EquipmentType.T_ARMOR_PATCHWORK);
             }
             return "";
         }
 
         private @Nullable String getStructureType(Entity entity) {
+            if (entity instanceof Mek mek && mek.isFrankenMek()) {
+                return mek.getFrankenMekStructureDisplayName();
+            }
             if (entity.getStructureType() < 0) {
                 return null;
             }
             return EquipmentType.getStructureTypeName(entity.getStructureType());
+        }
+
+        static @Nullable Map<String, MaterialLayoutEntry> getPatchworkLayout(Entity entity) {
+            if (!entity.hasPatchworkArmor()) {
+                return null;
+            }
+            Map<String, MaterialLayoutEntry> layout = new LinkedHashMap<>();
+            for (int location = 0; location < entity.locations(); location++) {
+                layout.put(entity.getLocationAbbr(location), new MaterialLayoutEntry(
+                      entity.getArmorType(location), entity.isClanArmor(location)));
+            }
+            return layout;
+        }
+
+        static @Nullable Map<String, MaterialLayoutEntry> getHybridLayout(Entity entity) {
+            if (!(entity instanceof Mek mek) || !mek.hasHybridFrankenMekStructure()) {
+                return null;
+            }
+            Map<String, MaterialLayoutEntry> layout = new LinkedHashMap<>();
+            for (int location = 0; location < entity.locations(); location++) {
+                layout.put(entity.getLocationAbbr(location), new MaterialLayoutEntry(
+                      mek.getFrankenMekStructureType(location),
+                      TechConstants.isClan(mek.getFrankenMekStructureTechLevel(location))));
+            }
+            return layout;
         }
 
         /**
@@ -2423,7 +2431,7 @@ public class SVGMassPrinter {
                 switch (arg) {
                     case "-h", "--help" -> {
                         printUsage();
-                        System.exit(0);
+                        java.lang.System.exit(0);
                     }
                     case "-o", "--output", "--root" -> {
                         ROOT_FOLDER = inlineValue != null ? inlineValue : requireArgumentValue(args, ++i);
@@ -2571,13 +2579,13 @@ public class SVGMassPrinter {
         final int barWidth = 40;
         int filled = (percent * barWidth) / 100;
         String bar = "=".repeat(filled) + " ".repeat(barWidth - filled);
-        long elapsed = System.currentTimeMillis() - startMillis;
+        long elapsed = java.lang.System.currentTimeMillis() - startMillis;
         long eta = (done > 0) ? (elapsed * (total - (long) done)) / done : 0;
-        System.out.printf("\r[%s] %3d%% (%d/%d) elapsed %s ETA %s   ",
+        java.lang.System.out.printf("\r[%s] %3d%% (%d/%d) elapsed %s ETA %s   ",
               bar, percent, done, total, formatDuration(elapsed), formatDuration(eta));
-        System.out.flush();
+        java.lang.System.out.flush();
         if (done >= total) {
-            System.out.println();
+            java.lang.System.out.println();
         }
     }
 
@@ -2615,12 +2623,12 @@ public class SVGMassPrinter {
               """.formatted(ROOT_FOLDER, SHEETS_DIR, UNIT_FILES_DIR, TYPEFACE,
               SKIP_SVG, SKIP_UNITS, SKIP_EQUIPMENT, SKIP_UNIT_FILES,
               !SKIP_DETAILED_CALCULATIONS, EXPORT_CALCULATIONS_AS_TEXT);
-        System.out.println(usage);
+        java.lang.System.out.println(usage);
     }
 
     public static void main(String[] args) {
         if (!parseArgs(args)) {
-            System.exit(1);
+            java.lang.System.exit(1);
         }
         logger.info("Starting SVG Mass Printer...");
         final String rootPath = ROOT_FOLDER + File.separator + SHEETS_DIR;
@@ -2642,7 +2650,7 @@ public class SVGMassPrinter {
         if (!sheetsDir.exists() || !sheetsDir.isDirectory()) {
             if (!sheetsDir.mkdirs()) {
                 logger.error("Failed to create sheets directory: {}", sheetsDir.getPath());
-                System.exit(1);
+                java.lang.System.exit(1);
             } else {
                 logger.info("Sheets directory created: {}", sheetsDir.getPath());
             }
@@ -2672,7 +2680,7 @@ public class SVGMassPrinter {
             if (!unitFilesDir.exists() || !unitFilesDir.isDirectory()) {
                 if (!unitFilesDir.mkdirs()) {
                     logger.error("Failed to create unit files directory: {}", unitFilesDir.getPath());
-                    System.exit(1);
+                    java.lang.System.exit(1);
                 } else {
                     logger.info("Unit files directory created: {}", unitFilesDir.getPath());
                 }
@@ -2700,7 +2708,7 @@ public class SVGMassPrinter {
         ObjectMapper mapper = new ObjectMapper();
         mapper.disable(SerializationFeature.INDENT_OUTPUT);
         mapper.getFactory().configure(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN.mappedFeature(), true);
-        long timestamp = System.currentTimeMillis();
+        long timestamp = java.lang.System.currentTimeMillis();
         Map<String, Entity> uniqueUnitTypes = new ConcurrentHashMap<>();
 
         RecordSheetOptions recordSheetOptions = getRecordSheetOptions();
@@ -2713,12 +2721,12 @@ public class SVGMassPrinter {
         } else {
             if (UNIT_FILE_OVERRIDES.isEmpty()) {
                 logger.error("--units was specified but no valid .blk/.mtf files were found.");
-                System.exit(1);
+                java.lang.System.exit(1);
             }
             meks = loadSummariesFromOverrides();
             if (meks.length == 0) {
                 logger.error("No valid units could be loaded from the supplied unit files.");
-                System.exit(1);
+                java.lang.System.exit(1);
             }
             logger.info("Processing {} meks from {} supplied unit file(s)...", meks.length,
                   UNIT_FILE_OVERRIDES.size());
@@ -2732,7 +2740,7 @@ public class SVGMassPrinter {
         final AtomicInteger progressCounter = new AtomicInteger(0);
         final AtomicInteger lastReportedPercent = new AtomicInteger(-1);
         final int totalUnits = meks.length;
-        final long progressStart = System.currentTimeMillis();
+        final long progressStart = java.lang.System.currentTimeMillis();
         int parallelism = ForkJoinPool.getCommonPoolParallelism();
         logger.info("Starting parallel processing with {} threads...", parallelism);
 
@@ -3019,7 +3027,7 @@ public class SVGMassPrinter {
             }
         }
 
-        System.exit(0);
+        java.lang.System.exit(0);
     }
 
     static Map<String, Object> equipmentDataForExport(EquipmentType equipmentType) {

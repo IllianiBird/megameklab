@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019-2025 The MegaMek Team. All Rights Reserved.
+ * Copyright (C) 2019-2026 The MegaMek Team. All Rights Reserved.
  *
  * This file is part of MegaMekLab.
  *
@@ -302,7 +302,7 @@ public class SVMainUI extends MegaMekLabMainUI implements BFSLinkedEditor {
 
         if (null == oldEntity) {
             newUnit.setChassis("New");
-            newUnit.setModel("Support Tank");
+            newUnit.setModel("Support Vehicle");
             newUnit.setYear(3145);
             newUnit.setStructuralTechRating(TechRating.D);
             newUnit.setArmorTechRating(TechRating.D);

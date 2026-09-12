@@ -924,12 +924,14 @@ public final class MekUtil {
      * any.
      */
     public static void fillInAllEquipment(Mek mek) {
-        int externalEngineHS = UnitUtil.getCriticalFreeHeatSinks(mek, mek.hasCompactHeatSinks());
+        int engineFreeHS = UnitUtil.getCriticalFreeHeatSinks(mek, mek.hasCompactHeatSinks());
         // Create a copy of the equipment list to iterate over
         List<Mounted<?>> equipmentList = new ArrayList<>(mek.getEquipment());
         for (Mounted<?> mount : equipmentList) {
             if ((mount.getLocation() != Entity.LOC_NONE)
-                  || (UnitUtil.isHeatSink(mount) && (externalEngineHS-- > 0))) {
+                  || (UnitUtil.isHeatSink(mount)
+                  && !mount.getType().hasFlag(MiscType.F_IS_DOUBLE_HEAT_SINK_PROTOTYPE)
+                  && (engineFreeHS-- > 0))) {
                 continue;
             }
             for (int location = Mek.LOC_HEAD; location < mek.locations(); location++) {
